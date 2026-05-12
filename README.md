@@ -1,0 +1,644 @@
+[index.html.html](https://github.com/user-attachments/files/27623240/index.html.html)
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tafhim — Personal Assistant</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f7f6f3;
+    --surface: #ffffff;
+    --surface2: #f0ede8;
+    --border: rgba(0,0,0,0.1);
+    --border2: rgba(0,0,0,0.18);
+    --text: #1a1a1a;
+    --muted: #6b6b6b;
+    --accent: #1a1a1a;
+    --success-bg: #eaf3de;
+    --success-border: rgba(60,110,17,0.25);
+    --success-text: #3b6d11;
+    --warn-bg: #faeeda;
+    --warn-border: rgba(186,117,23,0.3);
+    --warn-text: #854f0b;
+    --info-bg: #e6f1fb;
+    --info-border: rgba(24,95,165,0.25);
+    --info-text: #185fa5;
+    --danger-bg: #fcebeb;
+    --danger-text: #a32d2d;
+    --radius: 10px;
+    --radius-sm: 7px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141414;
+      --surface: #1e1e1e;
+      --surface2: #272727;
+      --border: rgba(255,255,255,0.1);
+      --border2: rgba(255,255,255,0.18);
+      --text: #e8e8e8;
+      --muted: #888;
+      --accent: #e8e8e8;
+      --success-bg: #173404;
+      --success-border: rgba(150,220,80,0.2);
+      --success-text: #c0dd97;
+      --warn-bg: #412402;
+      --warn-border: rgba(240,160,40,0.2);
+      --warn-text: #fac775;
+      --info-bg: #042c53;
+      --info-border: rgba(55,138,221,0.2);
+      --info-text: #85b7eb;
+      --danger-bg: #501313;
+      --danger-text: #f09595;
+    }
+  }
+
+  body {
+    font-family: -apple-system, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 0;
+  }
+
+  header {
+    background: var(--surface);
+    border-bottom: 0.5px solid var(--border);
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky; top: 0; z-index: 10;
+  }
+  .header-title { font-size: 15px; font-weight: 500; }
+  .header-time { font-size: 13px; color: var(--muted); }
+
+  .tabs {
+    display: flex; gap: 4px;
+    padding: 12px 16px 0;
+    background: var(--surface);
+    border-bottom: 0.5px solid var(--border);
+  }
+  .tab {
+    font-size: 13px; padding: 7px 16px;
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    border: 0.5px solid transparent;
+    background: transparent; color: var(--muted);
+    cursor: pointer; transition: all 0.15s;
+    border-bottom: none;
+  }
+  .tab.active {
+    background: var(--bg);
+    border-color: var(--border);
+    border-bottom-color: var(--bg);
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  .page { display: none; padding: 16px; max-width: 600px; margin: 0 auto; }
+  .page.active { display: block; }
+
+  .section-label {
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.09em;
+    color: var(--muted); margin-bottom: 8px; margin-top: 20px;
+  }
+  .section-label:first-child { margin-top: 0; }
+
+  .card {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    margin-bottom: 12px;
+  }
+
+  .directive-main {
+    font-size: 18px; font-weight: 500; line-height: 1.4;
+    color: var(--text); margin-bottom: 6px;
+  }
+  .directive-reason {
+    font-size: 13px; color: var(--muted); line-height: 1.7;
+  }
+
+  .tl-list { display: flex; flex-direction: column; gap: 5px; }
+  .tl-item {
+    display: flex; gap: 10px; align-items: flex-start;
+    padding: 8px 12px; border-radius: var(--radius-sm);
+    border: 0.5px solid var(--border);
+    background: var(--surface2);
+    font-size: 13px; cursor: pointer; transition: all 0.15s;
+    user-select: none;
+  }
+  .tl-item:hover { border-color: var(--border2); }
+  .tl-item.current {
+    background: var(--success-bg);
+    border-color: var(--success-border);
+  }
+  .tl-item.done { opacity: 0.38; }
+  .tl-dot {
+    width: 7px; height: 7px; border-radius: 50%; margin-top: 4px; flex-shrink: 0;
+    background: var(--border2);
+  }
+  .tl-item.current .tl-dot { background: var(--success-text); }
+  .tl-time { color: var(--muted); min-width: 50px; font-size: 12px; padding-top: 1px; }
+  .tl-text { color: var(--text); }
+
+  .input-row { display: flex; gap: 8px; margin-bottom: 10px; }
+  #event-input {
+    flex: 1; font-size: 14px; padding: 10px 14px;
+    border-radius: var(--radius-sm);
+    border: 0.5px solid var(--border2);
+    background: var(--surface);
+    color: var(--text);
+    outline: none;
+  }
+  #event-input:focus { border-color: var(--accent); }
+  #send-btn {
+    font-size: 13px; padding: 10px 16px;
+    border-radius: var(--radius-sm);
+    border: 0.5px solid var(--border2);
+    background: var(--text);
+    color: var(--bg);
+    cursor: pointer; font-weight: 500;
+    transition: opacity 0.15s;
+  }
+  #send-btn:hover { opacity: 0.8; }
+  #send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .override-bar { display: flex; gap: 6px; flex-wrap: wrap; }
+  .ov-btn {
+    font-size: 12px; padding: 6px 12px;
+    border-radius: 20px;
+    border: 0.5px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer; transition: all 0.15s;
+  }
+  .ov-btn:hover {
+    background: var(--warn-bg); color: var(--warn-text);
+    border-color: var(--warn-border);
+  }
+
+  .response-area {
+    background: var(--surface2);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    font-size: 14px; line-height: 1.8;
+    color: var(--text); white-space: pre-wrap;
+    min-height: 70px;
+  }
+
+  .profile-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px;
+  }
+  .prof-chip {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 9px 11px;
+  }
+  .prof-chip-label { font-size: 11px; color: var(--muted); margin-bottom: 3px; }
+  .prof-chip-val { font-size: 13px; font-weight: 500; }
+
+  .routine-block {
+    font-size: 13px; line-height: 1.9; color: var(--text);
+  }
+  .routine-row { display: flex; gap: 12px; padding: 4px 0; border-bottom: 0.5px solid var(--border); }
+  .routine-row:last-child { border-bottom: none; }
+  .routine-time { color: var(--muted); min-width: 80px; flex-shrink: 0; }
+
+  .log-item {
+    display: flex; gap: 10px;
+    padding: 8px 12px;
+    border-radius: var(--radius-sm);
+    border: 0.5px solid var(--border);
+    background: var(--surface);
+    font-size: 13px; margin-bottom: 5px;
+  }
+  .log-time { color: var(--muted); min-width: 48px; flex-shrink: 0; }
+
+  .pending-item {
+    padding: 10px 14px;
+    border-radius: var(--radius-sm);
+    border: 0.5px solid var(--warn-border);
+    background: var(--warn-bg);
+    color: var(--warn-text);
+    font-size: 13px; margin-bottom: 6px;
+  }
+
+  .api-key-box {
+    background: var(--info-bg);
+    border: 0.5px solid var(--info-border);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    margin-bottom: 12px;
+    font-size: 13px; color: var(--info-text);
+    line-height: 1.6;
+  }
+  .api-input-row { display: flex; gap: 6px; margin-top: 8px; }
+  #api-key-input {
+    flex: 1; font-size: 13px; padding: 7px 10px;
+    border-radius: var(--radius-sm);
+    border: 0.5px solid var(--info-border);
+    background: var(--surface);
+    color: var(--text); outline: none;
+  }
+  #api-save-btn {
+    font-size: 12px; padding: 7px 12px;
+    border-radius: var(--radius-sm);
+    border: 0.5px solid var(--info-border);
+    background: var(--info-text); color: white;
+    cursor: pointer;
+  }
+
+  .clear-btn {
+    font-size: 12px; padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    border: 0.5px solid var(--border);
+    background: var(--surface); color: var(--muted);
+    cursor: pointer; margin-top: 8px;
+  }
+  .clear-btn:hover { color: var(--danger-text); border-color: var(--danger-text); }
+
+  .empty-state { font-size: 13px; color: var(--muted); padding: 12px 0; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-title">Tafhim — Personal Assistant</div>
+  <div class="header-time" id="live-clock"></div>
+</header>
+
+<div class="tabs">
+  <button class="tab active" id="tab-btn-assistant" onclick="switchTab('assistant')">Assistant</button>
+  <button class="tab" id="tab-btn-profile" onclick="switchTab('profile')">Profile</button>
+  <button class="tab" id="tab-btn-log" onclick="switchTab('log')">Log</button>
+  <button class="tab" id="tab-btn-settings" onclick="switchTab('settings')">Settings</button>
+</div>
+
+<!-- ASSISTANT TAB -->
+<div class="page active" id="tab-assistant">
+  <div class="section-label">अभी का निर्देश</div>
+  <div class="card">
+    <div class="directive-main" id="main-directive">लोड हो रहा है...</div>
+    <div class="directive-reason" id="directive-reason"></div>
+  </div>
+
+  <div class="section-label">आज की दिनचर्या <span style="color:var(--muted);font-size:10px;font-weight:400;text-transform:none">(tap = done ✓)</span></div>
+  <div class="tl-list" id="timeline"></div>
+
+  <div class="section-label" style="margin-top:20px">क्या हो गया? लिखें</div>
+  <div class="input-row">
+    <input id="event-input" type="text" placeholder="वाक हो गई, खाना खा लिया, नींद नहीं आई..." />
+    <button id="send-btn" onclick="processEvent()">बताएं ↗</button>
+  </div>
+
+  <div class="section-label">तुरंत override</div>
+  <div class="override-bar">
+    <button class="ov-btn" onclick="quickOverride('breaking news आ गई')">🔴 Breaking news</button>
+    <button class="ov-btn" onclick="quickOverride('तबीयत ठीक नहीं')">😷 तबीयत खराब</button>
+    <button class="ov-btn" onclick="quickOverride('deadline 2 घंटे पहले है')">⚡ Deadline जल्दी</button>
+    <button class="ov-btn" onclick="quickOverride('बहुत थकान है')">😴 थकान</button>
+    <button class="ov-btn" onclick="quickOverride('वकील से मिलना है आज')">⚖️ वकील मीटिंग</button>
+    <button class="ov-btn" onclick="quickOverride('stress बहुत है')">😤 Stress</button>
+  </div>
+
+  <div class="section-label" style="margin-top:16px">AI का जवाब</div>
+  <div class="response-area" id="response-area">ऊपर लिखें कि क्या हो गया — assistant बताएगा अभी क्या करें।</div>
+</div>
+
+<!-- PROFILE TAB -->
+<div class="page" id="tab-profile">
+  <div class="section-label">आपका profile</div>
+  <div class="profile-grid">
+    <div class="prof-chip"><div class="prof-chip-label">उम्र</div><div class="prof-chip-val">65 वर्ष</div></div>
+    <div class="prof-chip"><div class="prof-chip-label">सोना</div><div class="prof-chip-val">11:30 बजे</div></div>
+    <div class="prof-chip"><div class="prof-chip-label">जागना</div><div class="prof-chip-val">5:00–5:30</div></div>
+    <div class="prof-chip"><div class="prof-chip-label">Deadline</div><div class="prof-chip-val">शाम 7:30</div></div>
+    <div class="prof-chip"><div class="prof-chip-label">नैप</div><div class="prof-chip-val">2–3 बजे</div></div>
+    <div class="prof-chip"><div class="prof-chip-label">Smoking</div><div class="prof-chip-val">~20/दिन</div></div>
+    <div class="prof-chip"><div class="prof-chip-label">चाय</div><div class="prof-chip-val">सुबह 2 कप</div></div>
+    <div class="prof-chip"><div class="prof-chip-label">Walk goal</div><div class="prof-chip-val">45 मिनट</div></div>
+    <div class="prof-chip"><div class="prof-chip-label">Gym goal</div><div class="prof-chip-val">45 मिनट</div></div>
+  </div>
+
+  <div class="section-label">सुबह का target routine</div>
+  <div class="card">
+    <div class="routine-block">
+      <div class="routine-row"><span class="routine-time">5:00</span><span>उठना</span></div>
+      <div class="routine-row"><span class="routine-time">5:00–5:45</span><span>Morning walk (45 min)</span></div>
+      <div class="routine-row"><span class="routine-time">5:45–6:25</span><span>पिता जी के साथ चाय (30–40 min)</span></div>
+      <div class="routine-row"><span class="routine-time">6:25–6:30</span><span>Washroom</span></div>
+      <div class="routine-row"><span class="routine-time">6:30–7:15</span><span>Home gym workout (45 min)</span></div>
+      <div class="routine-row"><span class="routine-time">7:15–7:40</span><span>नहाना + शेव (25 min)</span></div>
+      <div class="routine-row"><span class="routine-time">7:40–8:10</span><span>नाश्ता</span></div>
+      <div class="routine-row"><span class="routine-time">8:10+</span><span>Field / desk काम शुरू</span></div>
+    </div>
+  </div>
+
+  <div class="section-label">Long-term goal</div>
+  <div class="card">
+    <div style="font-size:14px;line-height:1.7">Athletic body with 4–5 kg weight gain। Morning routine consistently करना सबसे पहली priority।</div>
+  </div>
+
+  <div class="section-label">Pending काम</div>
+  <div class="pending-item">⚖️ वकील से मिलना (काफी समय से pending)</div>
+
+  <div class="section-label">Journalism workflow</div>
+  <div class="card">
+    <div style="font-size:13px;line-height:1.8;color:var(--text)">
+      Beat: local governance, agriculture, rural development, law enforcement, food safety<br>
+      RTI-based investigative reporting<br>
+      PMFBY fraud investigation ongoing<br>
+      Field: ~2 घंटे | Desk: ~6 घंटे | Deadline: 7:30 PM
+    </div>
+  </div>
+</div>
+
+<!-- LOG TAB -->
+<div class="page" id="tab-log">
+  <div class="section-label">आज का log</div>
+  <div id="log-list"></div>
+  <div id="log-empty" class="empty-state">अभी कोई entry नहीं।</div>
+  <button class="clear-btn" onclick="clearLog()">Log साफ करें</button>
+</div>
+
+<!-- SETTINGS TAB -->
+<div class="page" id="tab-settings">
+  <div class="section-label">Claude API Key</div>
+  <div class="api-key-box">
+    यह app Claude API से connect होता है। आपका API key चाहिए।<br>
+    <strong>कहां मिलेगा:</strong> console.anthropic.com → API Keys → Create Key<br>
+    Key सिर्फ इस browser में save होती है — कहीं upload नहीं होती।
+    <div class="api-input-row">
+      <input id="api-key-input" type="password" placeholder="sk-ant-..." />
+      <button id="api-save-btn" onclick="saveApiKey()">Save</button>
+    </div>
+    <div id="api-status" style="margin-top:6px;font-size:12px;"></div>
+  </div>
+
+  <div class="section-label">Timeline reset</div>
+  <button class="clear-btn" onclick="resetTimeline()">आज की timeline reset करें</button>
+  <br>
+  <button class="clear-btn" onclick="clearAll()" style="margin-top:6px;color:var(--danger-text)">सब data clear करें</button>
+</div>
+
+<script>
+const PROFILE_SYSTEM = `
+तुम Tafhim के context-aware personal assistant हो। हिंदी में जवाब देते हो।
+
+USER PROFILE:
+- नाम: Tafhim, उम्र: 65 साल, पेशा: Hindi journalist & editor, Farrukhabad
+- सोना: रात 11:30 | जागना: सुबह 5:00–5:30 (करीब 5.5-6 घंटे नींद — यह कम है)
+- काम: 11:30 AM से 10 PM | दोपहर 2-3 PM: लंच + 30 min नैप
+- Story deadline: शाम 7:30 बजे
+- Smoking: ~20 सिगरेट/दिन (उम्र 65 — health risk high है, पर lecture नहीं देना)
+- चाय: सुबह 2 कप (washroom से पहले)
+- Morning walk goal: 45 min | Home gym goal: 45 min
+
+TARGET MORNING SEQUENCE:
+5:00 उठो → 5:45 वाक खत्म → 6:25 पिता जी के साथ चाय (skip नहीं करना) → 6:30 washroom → 7:15 gym खत्म → 7:40 नहाना शेव → 8:10 नाश्ता → 8:10+ काम
+
+JOURNALISM:
+RTI investigative reporting, beats: governance/agriculture/rural dev/law/food safety
+PMFBY fraud investigation ongoing | Pending: वकील से मिलना
+
+LONG TERM GOAL: Athletic body, 4-5 kg weight gain
+
+RESPONSE RULES:
+1. हमेशा हिंदी में
+2. पहली line = clear directive (अभी X करें / X करना बेहतर है)
+3. 2-3 lines में कारण — brief, no lecture
+4. User ने जो बताया उसे acknowledge करो, फिर next step
+5. 65 साल + heavy smoking = overexertion से बचाना है, rest को serious लो
+6. कुल 80-100 words max
+7. Warm लेकिन direct tone — दोस्त की तरह, डॉक्टर की तरह नहीं
+`;
+
+const TIMELINE = [
+  { time: "5:00", task: "उठना", id: "wake" },
+  { time: "5:00–5:45", task: "Morning walk", id: "walk" },
+  { time: "5:45–6:25", task: "पिता जी के साथ चाय", id: "chai" },
+  { time: "6:30–7:15", task: "Home gym", id: "gym" },
+  { time: "7:15–7:40", task: "नहाना + शेव", id: "bath" },
+  { time: "7:40–8:10", task: "नाश्ता", id: "breakfast" },
+  { time: "8:10–11:30", task: "Field / तैयारी", id: "field" },
+  { time: "11:30–14:00", task: "Desk काम", id: "desk1" },
+  { time: "14:00–15:00", task: "लंच + नैप", id: "nap" },
+  { time: "15:00–19:30", task: "Desk काम + story filing", id: "desk2" },
+  { time: "19:30", task: "Story deadline ✦", id: "deadline" },
+  { time: "20:00–23:00", task: "Wind down", id: "wind" },
+  { time: "23:30", task: "सोना", id: "sleep" },
+];
+
+let done = JSON.parse(localStorage.getItem('pa_done') || '[]');
+let logs = JSON.parse(localStorage.getItem('pa_log') || '[]');
+
+function getApiKey() { return localStorage.getItem('pa_apikey') || ''; }
+
+function saveApiKey() {
+  const key = document.getElementById('api-key-input').value.trim();
+  if (!key.startsWith('sk-')) {
+    document.getElementById('api-status').textContent = '❌ Key सही नहीं लगती (sk- से शुरू होनी चाहिए)';
+    return;
+  }
+  localStorage.setItem('pa_apikey', key);
+  document.getElementById('api-status').textContent = '✅ Key save हो गई';
+  document.getElementById('api-key-input').value = '●●●●●●●●●●●●';
+}
+
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  const activeTab = document.getElementById('tab-btn-' + name);
+  if (activeTab) activeTab.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+  if (name === 'log') renderLog();
+}
+
+function getCurrentSlot() {
+  const now = new Date();
+  const m = now.getHours() * 60 + now.getMinutes();
+  if (m < 300) return "sleep";
+  if (m < 345) return "walk";
+  if (m < 385) return "chai";
+  if (m < 435) return "gym";
+  if (m < 460) return "bath";
+  if (m < 490) return "breakfast";
+  if (m < 690) return "field";
+  if (m < 840) return "desk1";
+  if (m < 900) return "nap";
+  if (m < 1170) return "desk2";
+  if (m < 1200) return "deadline";
+  if (m < 1380) return "wind";
+  return "sleep";
+}
+
+function renderTimeline() {
+  const current = getCurrentSlot();
+  const tl = document.getElementById('timeline');
+  tl.innerHTML = '';
+  TIMELINE.forEach(item => {
+    const el = document.createElement('div');
+    el.className = 'tl-item' +
+      (item.id === current ? ' current' : '') +
+      (done.includes(item.id) ? ' done' : '');
+    el.innerHTML = `<div class="tl-dot"></div><span class="tl-time">${item.time}</span><span class="tl-text">${item.task}${done.includes(item.id) ? ' ✓' : ''}</span>`;
+    el.onclick = () => {
+      done = done.includes(item.id) ? done.filter(x => x !== item.id) : [...done, item.id];
+      localStorage.setItem('pa_done', JSON.stringify(done));
+      renderTimeline();
+    };
+    tl.appendChild(el);
+  });
+}
+
+function updateClock() {
+  const now = new Date();
+  document.getElementById('live-clock').textContent =
+    now.toLocaleTimeString('hi-IN', { hour: '2-digit', minute: '2-digit' });
+}
+
+async function callClaude(userMsg) {
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    return "⚙️ पहले Settings tab में API Key save करें।";
+  }
+
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString('hi-IN', { hour: '2-digit', minute: '2-digit' });
+  const current = TIMELINE.find(t => t.id === getCurrentSlot());
+  const doneList = TIMELINE.filter(t => done.includes(t.id)).map(t => t.task).join(', ') || 'कोई नहीं';
+
+  const context = `अभी का समय: ${timeStr}\nCurrent slot: ${current ? current.task : 'unknown'}\nआज complete: ${doneList}\nUser: "${userMsg}"`;
+
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true"
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 200,
+      system: PROFILE_SYSTEM,
+      messages: [{ role: "user", content: context }]
+    })
+  });
+
+  if (!res.ok) {
+    if (res.status === 401) return "❌ API Key गलत है। Settings में दोबारा check करें।";
+    return "❌ Error: " + res.status + " — दोबारा try करें।";
+  }
+
+  const data = await res.json();
+  return data.content?.[0]?.text || "जवाब नहीं मिला।";
+}
+
+async function processEvent(override) {
+  const input = document.getElementById('event-input');
+  const text = override || input.value.trim();
+  if (!text) return;
+
+  const btn = document.getElementById('send-btn');
+  const resp = document.getElementById('response-area');
+  btn.disabled = true;
+  resp.textContent = '...';
+
+  addLog(text);
+  if (!override) input.value = '';
+
+  const reply = await callClaude(text);
+  resp.textContent = reply;
+
+  const lines = reply.split('\n');
+  document.getElementById('main-directive').textContent = lines[0];
+  document.getElementById('directive-reason').textContent = lines.slice(1).join(' ').trim();
+
+  btn.disabled = false;
+}
+
+function quickOverride(text) {
+  document.getElementById('event-input').value = '';
+  processEvent(text);
+}
+
+function addLog(text) {
+  const time = new Date().toLocaleTimeString('hi-IN', { hour: '2-digit', minute: '2-digit' });
+  logs.unshift({ time, text });
+  if (logs.length > 100) logs = logs.slice(0, 100);
+  localStorage.setItem('pa_log', JSON.stringify(logs));
+}
+
+function renderLog() {
+  const list = document.getElementById('log-list');
+  const empty = document.getElementById('log-empty');
+  list.innerHTML = '';
+  if (!logs.length) { empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+  logs.forEach(e => {
+    const div = document.createElement('div');
+    div.className = 'log-item';
+    div.innerHTML = `<span class="log-time">${e.time}</span><span>${e.text}</span>`;
+    list.appendChild(div);
+  });
+}
+
+function clearLog() {
+  if (!confirm('Log साफ करें?')) return;
+  logs = [];
+  localStorage.setItem('pa_log', '[]');
+  renderLog();
+}
+
+function resetTimeline() {
+  if (!confirm('आज की timeline reset करें?')) return;
+  done = [];
+  localStorage.setItem('pa_done', '[]');
+  renderTimeline();
+}
+
+function clearAll() {
+  if (!confirm('सब data clear हो जाएगा। Continue?')) return;
+  localStorage.clear();
+  location.reload();
+}
+
+async function loadInitialDirective() {
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString('hi-IN', { hour: '2-digit', minute: '2-digit' });
+  const current = TIMELINE.find(t => t.id === getCurrentSlot());
+  const msg = `अभी ${timeStr} बजे हैं। Schedule slot: "${current ? current.task : 'unknown'}"। एक directive दो — अभी क्या करना चाहिए।`;
+
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    document.getElementById('main-directive').textContent = "API Key set करें";
+    document.getElementById('directive-reason').textContent = "Settings tab में जाएं और Claude API key paste करें।";
+    return;
+  }
+
+  const reply = await callClaude(msg);
+  const lines = reply.split('\n');
+  document.getElementById('main-directive').textContent = lines[0];
+  document.getElementById('directive-reason').textContent = lines.slice(1).join(' ').trim();
+}
+
+document.getElementById('event-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') processEvent();
+});
+
+updateClock();
+setInterval(updateClock, 30000);
+setInterval(renderTimeline, 60000);
+renderTimeline();
+loadInitialDirective();
+</script>
+</body>
+</html>
