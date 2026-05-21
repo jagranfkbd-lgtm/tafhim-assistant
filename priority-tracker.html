@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tafhim's Priority Tracker</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
+
+  :root {
+    --bg: #0f0f0f;
+    --surface: #1a1a1a;
+    --surface2: #222;
+    --border: #2a2a2a;
+    --accent: #e8a020;
+    --text: #e8e8e8;
+    --muted: #888;
+    --high: #e74c3c;
+    --high-bg: #3d0000;
+    --medium: #f39c12;
+    --medium-bg: #2d1f00;
+    --low: #2ecc71;
+    --low-bg: #002d10;
+    --done-color: #27ae60;
+    --postponed-color: #2980b9;
+    --pending-color: #f39c12;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans Devanagari', sans-serif;
+    min-height: 100vh;
+    padding: 16px;
+  }
+
+  header {
+    border-bottom: 2px solid var(--accent);
+    padding-bottom: 12px;
+    margin-bottom: 20px;
+  }
+
+  header h1 { font-size: 1.4rem; color: var(--accent); letter-spacing: 1px; }
+  header p { font-size: 0.75rem; color: var(--muted); font-family: 'JetBrains Mono', monospace; margin-top: 4px; }
+
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+
+  .stat-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px;
+    text-align: center;
+  }
+
+  .stat-box .num { font-size: 1.6rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+  .stat-box .label { font-size: 0.65rem; color: var(--muted); margin-top: 2px; }
+  .stat-box.high .num { color: var(--high); }
+  .stat-box.medium .num { color: var(--medium); }
+  .stat-box.low .num { color: var(--low); }
+  .stat-box.total .num { color: var(--accent); }
+
+  .controls {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+
+  .filter-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    font-family: 'Noto Sans Devanagari', sans-serif;
+    transition: all 0.2s;
+  }
+
+  .filter-btn.active, .filter-btn:hover {
+    background: var(--accent);
+    color: #000;
+    border-color: var(--accent);
+  }
+
+  .add-btn {
+    margin-left: auto;
+    background: var(--accent);
+    border: none;
+    color: #000;
+    padding: 6px 14px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    font-weight: 700;
+    font-family: 'Noto Sans Devanagari', sans-serif;
+  }
+
+  .search-bar {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-family: 'Noto Sans Devanagari', sans-serif;
+    margin-bottom: 12px;
+  }
+
+  .search-bar:focus { outline: none; border-color: var(--accent); }
+  .search-bar::placeholder { color: var(--muted); }
+
+  .task-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--border);
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 10px;
+    transition: all 0.2s;
+  }
+
+  .task-card.high { border-left-color: var(--high); }
+  .task-card.medium { border-left-color: var(--medium); }
+  .task-card.low { border-left-color: var(--low); }
+  .task-card.done-card { opacity: 0.6; }
+
+  .card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .task-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    line-height: 1.4;
+    flex: 1;
+  }
+
+  .task-title.strikethrough { text-decoration: line-through; color: var(--muted); }
+
+  .badges { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
+
+  .badge {
+    font-size: 0.6rem;
+    padding: 2px 7px;
+    border-radius: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    white-space: nowrap;
+    font-weight: 600;
+  }
+
+  .badge.high { background: var(--high-bg); color: var(--high); border: 1px solid var(--high); }
+  .badge.medium { background: var(--medium-bg); color: var(--medium); border: 1px solid var(--medium); }
+  .badge.low { background: var(--low-bg); color: var(--low); border: 1px solid var(--low); }
+  .badge.done { background: #002d10; color: #2ecc71; border: 1px solid #27ae60; }
+  .badge.pending { background: #2d1f00; color: var(--medium); border: 1px solid var(--medium); }
+  .badge.postponed { background: #001f3d; color: #5dade2; border: 1px solid #2980b9; }
+  .badge.overdue { background: #3d0000; color: var(--high); border: 1px solid var(--high); }
+
+  .card-meta {
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+  }
+
+  .meta-item {
+    font-size: 0.68rem;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .meta-item span { color: var(--text); font-weight: 600; }
+  .meta-item span.overdue-text { color: var(--high); }
+  .meta-item span.nextdue-text { color: var(--accent); }
+
+  .card-note {
+    font-size: 0.75rem;
+    color: #aaa;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+    line-height: 1.5;
+  }
+
+  .card-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+  }
+
+  .action-btn {
+    font-size: 0.65rem;
+    padding: 4px 8px;
+    border-radius: 3px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text);
+    cursor: pointer;
+    font-family: 'Noto Sans Devanagari', sans-serif;
+    transition: all 0.15s;
+  }
+
+  .action-btn:hover { background: var(--accent); color: #000; border-color: var(--accent); }
+  .action-btn.done-btn { border-color: var(--done-color); color: var(--done-color); }
+  .action-btn.done-btn:hover { background: var(--done-color); color: #000; }
+  .action-btn.postpone-btn { border-color: var(--postponed-color); color: var(--postponed-color); }
+  .action-btn.postpone-btn:hover { background: var(--postponed-color); color: #fff; }
+
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 100;
+    padding: 20px;
+    overflow-y: auto;
+  }
+
+  .modal-overlay.active { display: flex; align-items: flex-start; justify-content: center; }
+
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    padding: 20px;
+    width: 100%;
+    max-width: 480px;
+    margin-top: 40px;
+  }
+
+  .modal h3 { color: var(--accent); margin-bottom: 16px; font-size: 1rem; }
+
+  .form-group { margin-bottom: 12px; }
+
+  .form-group label {
+    display: block;
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+
+  .form-group input, .form-group select, .form-group textarea {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-family: 'Noto Sans Devanagari', sans-serif;
+  }
+
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  .form-group textarea { resize: vertical; min-height: 60px; }
+
+  .modal-btns { display: flex; gap: 8px; margin-top: 16px; }
+
+  .modal-btns button {
+    flex: 1;
+    padding: 8px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-family: 'Noto Sans Devanagari', sans-serif;
+    font-weight: 600;
+  }
+
+  .btn-save { background: var(--accent); color: #000; }
+  .btn-cancel { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+
+  .empty-state {
+    text-align: center;
+    color: var(--muted);
+    padding: 40px 20px;
+    font-size: 0.85rem;
+  }
+
+  select option { background: #1a1a1a; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>✅ Personal Priority Tracker</h1>
+  <p id="dateDisplay"></p>
+</header>
+
+<div class="stats">
+  <div class="stat-box high"><div class="num" id="stat-high">0</div><div class="label">🔴 High</div></div>
+  <div class="stat-box medium"><div class="num" id="stat-medium">0</div><div class="label">🟡 Medium</div></div>
+  <div class="stat-box low"><div class="num" id="stat-low">0</div><div class="label">🟢 Low</div></div>
+  <div class="stat-box total"><div class="num" id="stat-total">0</div><div class="label">📋 Active</div></div>
+</div>
+
+<input class="search-bar" type="text" id="searchInput" placeholder="🔍 Search tasks..." oninput="render()">
+
+<div class="controls">
+  <button class="filter-btn active" onclick="setFilter('all', this)">सभी</button>
+  <button class="filter-btn" onclick="setFilter('high', this)">🔴 High</button>
+  <button class="filter-btn" onclick="setFilter('today', this)">आज</button>
+  <button class="filter-btn" onclick="setFilter('pending', this)">Pending</button>
+  <button class="filter-btn" onclick="setFilter('postponed', this)">Postponed</button>
+  <button class="filter-btn" onclick="setFilter('done', this)">✅ Done</button>
+  <button class="filter-btn" onclick="setFilter('overdue', this)">⚠️ Overdue</button>
+  <button class="add-btn" onclick="openAddModal()">+ नया काम</button>
+</div>
+
+<div id="tasksList"></div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h3 id="modalTitle">नया काम जोड़ें</h3>
+    <div class="form-group">
+      <label>काम का नाम *</label>
+      <input type="text" id="f-title" placeholder="जैसे: Bank statement लेनी है">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Priority *</label>
+        <select id="f-priority">
+          <option value="high">🔴 High</option>
+          <option value="medium" selected>🟡 Medium</option>
+          <option value="low">🟢 Low</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Category</label>
+        <select id="f-category">
+          <option value="personal">Personal</option>
+          <option value="work">Work/Office</option>
+          <option value="health">Health</option>
+          <option value="finance">Finance</option>
+          <option value="family">Family</option>
+          <option value="home">Home</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Due Date *</label>
+        <input type="date" id="f-date">
+      </div>
+      <div class="form-group">
+        <label>Time</label>
+        <input type="time" id="f-time">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Frequency</label>
+        <select id="f-frequency">
+          <option value="once">एक बार (One-time)</option>
+          <option value="daily">रोज़ (Daily)</option>
+          <option value="3days">3-4 दिन</option>
+          <option value="weekly">हफ्ता (Weekly)</option>
+          <option value="monthly">महीना (Monthly)</option>
+          <option value="asneeded">जरूरत अनुसार</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Next Due On</label>
+        <input type="date" id="f-nextdue" placeholder="Auto-calculated">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Status</label>
+      <select id="f-status">
+        <option value="pending">⏳ Pending</option>
+        <option value="postponed">📅 Postponed</option>
+        <option value="done">✅ Done</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>नोट / विवरण</label>
+      <textarea id="f-note" placeholder="अतिरिक्त जानकारी या अगला कदम..."></textarea>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal()">रद्द करें</button>
+      <button class="btn-save" onclick="saveTask()">Save करें</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const TODAY = new Date();
+TODAY.setHours(0, 0, 0, 0);
+
+const FREQ_DAYS = { once: 0, daily: 1, '3days': 3, weekly: 7, monthly: 30, asneeded: 7 };
+const FREQ_LABELS = {
+  once: 'One-time', daily: 'रोज़', '3days': '3-4 दिन',
+  weekly: 'हफ्ता', monthly: 'महीना', asneeded: 'जरूरत अनुसार'
+};
+
+const CAT_LABELS = {
+  personal: 'Personal', work: 'Work', health: 'Health',
+  finance: 'Finance', family: 'Family', home: 'Home', other: 'Other'
+};
+
+function todayStr() {
+  return new Date().toISOString().split('T')[0];
+}
+
+function fmt(dateStr) {
+  if (!dateStr) return '—';
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('hi-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function daysUntil(dateStr) {
+  if (!dateStr) return 999;
+  const d = new Date(dateStr);
+  d.setHours(0, 0, 0, 0);
+  return Math.round((d - TODAY) / 86400000);
+}
+
+function calcNextDue(frequency) {
+  if (!frequency || frequency === 'once') return '';
+  const days = FREQ_DAYS[frequency] || 7;
+  const next = new Date();
+  next.setDate(next.getDate() + days);
+  return next.toISOString().split('T')[0];
+}
+
+function isOverdue(task) {
+  if (task.status === 'done') return false;
+  return daysUntil(task.date) < 0;
+}
+
+let tasks = JSON.parse(localStorage.getItem('tafhim-priorities') || '[]');
+let editIndex = -1;
+let currentFilter = 'all';
+
+if (tasks.length === 0) {
+  tasks = [
+    { id: 1, title: 'Bank statement लेनी है', priority: 'high', category: 'finance', date: todayStr(), time: '11:00', frequency: 'monthly', nextDue: '', status: 'pending', note: 'SBI branch जाना है। Passbook update भी करवानी है।' },
+    { id: 2, title: 'Doctor appointment — check-up', priority: 'high', category: 'health', date: todayStr(), time: '10:00', frequency: 'monthly', nextDue: '', status: 'pending', note: 'BP और sugar test करवाना है।' },
+    { id: 3, title: 'Office report submit करना', priority: 'medium', category: 'work', date: todayStr(), time: '14:00', frequency: 'weekly', nextDue: '', status: 'pending', note: 'Monthly progress report।' },
+    { id: 4, title: 'बिजली का बिल जमा करना', priority: 'medium', category: 'home', date: todayStr(), time: '', frequency: 'monthly', nextDue: '', status: 'pending', note: '' },
+    { id: 5, title: 'बच्चों की fees जमा करना', priority: 'high', category: 'family', date: todayStr(), time: '', frequency: 'monthly', nextDue: '', status: 'pending', note: 'Online payment या school जाकर।' },
+  ];
+  save();
+}
+
+function save() {
+  localStorage.setItem('tafhim-priorities', JSON.stringify(tasks));
+}
+
+function render() {
+  const list = document.getElementById('tasksList');
+  const q = document.getElementById('searchInput').value.toLowerCase();
+
+  let filtered = tasks.filter(t => {
+    const matchSearch = !q || t.title.toLowerCase().includes(q) || (t.note || '').toLowerCase().includes(q);
+    if (!matchSearch) return false;
+    if (currentFilter === 'all') return t.status !== 'done';
+    if (currentFilter === 'high') return t.priority === 'high' && t.status !== 'done';
+    if (currentFilter === 'today') return t.date === todayStr() && t.status !== 'done';
+    if (currentFilter === 'pending') return t.status === 'pending';
+    if (currentFilter === 'postponed') return t.status === 'postponed';
+    if (currentFilter === 'done') return t.status === 'done';
+    if (currentFilter === 'overdue') return isOverdue(t);
+    return true;
+  });
+
+  filtered.sort((a, b) => {
+    if (a.status === 'done' && b.status !== 'done') return 1;
+    if (b.status === 'done' && a.status !== 'done') return -1;
+    const pri = { high: 0, medium: 1, low: 2 };
+    if (pri[a.priority] !== pri[b.priority]) return pri[a.priority] - pri[b.priority];
+    return daysUntil(a.date) - daysUntil(b.date);
+  });
+
+  let hi = 0, med = 0, lo = 0;
+  tasks.forEach(t => {
+    if (t.status !== 'done') {
+      if (t.priority === 'high') hi++;
+      else if (t.priority === 'medium') med++;
+      else lo++;
+    }
+  });
+  document.getElementById('stat-high').textContent = hi;
+  document.getElementById('stat-medium').textContent = med;
+  document.getElementById('stat-low').textContent = lo;
+  document.getElementById('stat-total').textContent = tasks.filter(t => t.status !== 'done').length;
+
+  if (filtered.length === 0) {
+    list.innerHTML = '<div class="empty-state">इस category में कोई काम नहीं है।</div>';
+    return;
+  }
+
+  list.innerHTML = filtered.map(t => {
+    const realIndex = tasks.indexOf(t);
+    const overdue = isOverdue(t);
+    const days = daysUntil(t.date);
+
+    let dayLabel = '';
+    if (t.status !== 'done') {
+      if (days < 0) dayLabel = `${Math.abs(days)}d OVERDUE`;
+      else if (days === 0) dayLabel = 'आज';
+      else if (days === 1) dayLabel = 'कल';
+      else dayLabel = `${days}d बाद`;
+    }
+
+    const statusBadge = t.status === 'done' ? 'done'
+      : t.status === 'postponed' ? 'postponed'
+      : overdue ? 'overdue' : 'pending';
+
+    const statusLabel = t.status === 'done' ? '✅ Done'
+      : t.status === 'postponed' ? '📅 Postponed'
+      : overdue ? `⚠️ ${dayLabel}` : `⏳ ${dayLabel}`;
+
+    const cardClass = t.status === 'done' ? `${t.priority} done-card` : t.priority;
+
+    const showNextDue = t.nextDue && t.status !== 'done' && t.frequency !== 'once';
+
+    return `
+    <div class="task-card ${cardClass}">
+      <div class="card-top">
+        <div class="task-title ${t.status === 'done' ? 'strikethrough' : ''}">${t.title}</div>
+        <div class="badges">
+          <span class="badge ${t.priority}">${t.priority.toUpperCase()}</span>
+          <span class="badge ${statusBadge}">${statusLabel}</span>
+        </div>
+      </div>
+      <div class="card-meta">
+        <div class="meta-item">📅 Due: <span class="${overdue && t.status !== 'done' ? 'overdue-text' : ''}">${fmt(t.date)}${t.time ? ' ' + t.time : ''}</span></div>
+        <div class="meta-item">🔄 <span>${FREQ_LABELS[t.frequency] || t.frequency}</span></div>
+        ${showNextDue ? `<div class="meta-item">⏭️ Next: <span class="nextdue-text">${fmt(t.nextDue)}</span></div>` : ''}
+        <div class="meta-item">🏷️ <span>${CAT_LABELS[t.category] || t.category}</span></div>
+      </div>
+      ${t.note ? `<div class="card-note">💬 ${t.note}</div>` : ''}
+      <div class="card-actions">
+        ${t.status !== 'done'
+          ? `<button class="action-btn done-btn" onclick="markDone(${realIndex})">✅ Done</button>`
+          : `<button class="action-btn" onclick="markStatus(${realIndex},'pending')">↩️ Reopen</button>`}
+        ${t.status === 'pending' ? `<button class="action-btn postpone-btn" onclick="postponeTask(${realIndex})">📅 Postpone</button>` : ''}
+        <button class="action-btn" onclick="editTask(${realIndex})">✏️ Edit</button>
+        <button class="action-btn" onclick="deleteTask(${realIndex})">🗑️</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function setFilter(type, btn) {
+  currentFilter = type;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  render();
+}
+
+function markDone(index) {
+  const t = tasks[index];
+  const freq = t.frequency;
+
+  if (freq && freq !== 'once') {
+    const days = FREQ_DAYS[freq] || 7;
+    const next = new Date();
+    next.setDate(next.getDate() + days);
+    const nextStr = next.toISOString().split('T')[0];
+
+    t.nextDue = nextStr;
+    t.status = 'done';
+    t.doneAt = new Date().toISOString();
+    save();
+    render();
+    alert(`✅ Done!\nअगली बार: ${fmt(nextStr)}\n(Edit करके date update कर सकते हैं)`);
+  } else {
+    t.status = 'done';
+    t.doneAt = new Date().toISOString();
+    save();
+    render();
+  }
+}
+
+function markStatus(index, status) {
+  tasks[index].status = status;
+  save();
+  render();
+}
+
+function postponeTask(index) {
+  const t = tasks[index];
+  const newDate = prompt('नई तारीख डालें (YYYY-MM-DD):', t.date);
+  if (!newDate) return;
+  t.date = newDate;
+  t.status = 'postponed';
+  save();
+  render();
+}
+
+function openAddModal() {
+  editIndex = -1;
+  document.getElementById('modalTitle').textContent = 'नया काम जोड़ें';
+  document.getElementById('f-title').value = '';
+  document.getElementById('f-priority').value = 'medium';
+  document.getElementById('f-category').value = 'personal';
+  document.getElementById('f-date').value = todayStr();
+  document.getElementById('f-time').value = '';
+  document.getElementById('f-frequency').value = 'once';
+  document.getElementById('f-nextdue').value = '';
+  document.getElementById('f-status').value = 'pending';
+  document.getElementById('f-note').value = '';
+  document.getElementById('modalOverlay').classList.add('active');
+}
+
+function editTask(index) {
+  editIndex = index;
+  const t = tasks[index];
+  document.getElementById('modalTitle').textContent = 'काम Edit करें';
+  document.getElementById('f-title').value = t.title;
+  document.getElementById('f-priority').value = t.priority;
+  document.getElementById('f-category').value = t.category;
+  document.getElementById('f-date').value = t.date || '';
+  document.getElementById('f-time').value = t.time || '';
+  document.getElementById('f-frequency').value = t.frequency || 'once';
+  document.getElementById('f-nextdue').value = t.nextDue || '';
+  document.getElementById('f-status').value = t.status;
+  document.getElementById('f-note').value = t.note || '';
+  document.getElementById('modalOverlay').classList.add('active');
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('active');
+}
+
+document.getElementById('f-frequency').addEventListener('change', function() {
+  const val = this.value;
+  if (val !== 'once' && !document.getElementById('f-nextdue').value) {
+    document.getElementById('f-nextdue').value = calcNextDue(val);
+  }
+});
+
+function saveTask() {
+  const title = document.getElementById('f-title').value.trim();
+  if (!title) { alert('काम का नाम जरूरी है!'); return; }
+  const date = document.getElementById('f-date').value;
+  if (!date) { alert('तारीख जरूरी है!'); return; }
+
+  const task = {
+    id: editIndex >= 0 ? tasks[editIndex].id : Date.now(),
+    title,
+    priority: document.getElementById('f-priority').value,
+    category: document.getElementById('f-category').value,
+    date,
+    time: document.getElementById('f-time').value,
+    frequency: document.getElementById('f-frequency').value,
+    nextDue: document.getElementById('f-nextdue').value,
+    status: document.getElementById('f-status').value,
+    note: document.getElementById('f-note').value.trim()
+  };
+
+  if (editIndex >= 0) {
+    tasks[editIndex] = task;
+  } else {
+    tasks.push(task);
+  }
+
+  save();
+  closeModal();
+  render();
+}
+
+function deleteTask(index) {
+  if (!confirm(`"${tasks[index].title}" delete करें?`)) return;
+  tasks.splice(index, 1);
+  save();
+  render();
+}
+
+document.getElementById('modalOverlay').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+document.getElementById('dateDisplay').textContent =
+  new Date().toLocaleDateString('hi-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+render();
+</script>
+</body>
+</html>
