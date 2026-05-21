@@ -39,11 +39,31 @@
   header {
     border-bottom: 2px solid var(--accent);
     padding-bottom: 12px;
-    margin-bottom: 20px;
+    margin-bottom: 16px;
   }
 
   header h1 { font-size: 1.4rem; color: var(--accent); letter-spacing: 1px; }
   header p { font-size: 0.75rem; color: var(--muted); font-family: 'JetBrains Mono', monospace; margin-top: 4px; }
+
+  /* AUTH BAR */
+  .auth-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    margin-bottom: 16px;
+    font-size: 0.72rem;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .auth-bar.loading { background: var(--surface); border: 1px solid var(--border); color: var(--muted); }
+  .auth-bar.signed-out { background: #1a1200; border: 1px solid var(--accent); color: var(--accent); }
+  .auth-bar.signed-in { background: #001a0a; border: 1px solid var(--done-color); color: var(--done-color); }
+  .auth-bar .auth-left { flex: 1; }
+  .auth-btn { background: var(--accent); color: #000; border: none; padding: 5px 12px; border-radius: 3px; font-size: 0.7rem; cursor: pointer; font-weight: 700; font-family: 'Noto Sans Devanagari', sans-serif; white-space: nowrap; }
+  .signout-btn { background: transparent; color: var(--muted); border: 1px solid var(--border); padding: 4px 8px; border-radius: 3px; font-size: 0.65rem; cursor: pointer; font-family: 'JetBrains Mono', monospace; white-space: nowrap; }
+  .signout-btn:hover { color: var(--high); border-color: var(--high); }
 
   .stats {
     display: grid;
@@ -302,6 +322,10 @@
   <p id="dateDisplay"></p>
 </header>
 
+<div class="auth-bar loading" id="authBar">
+  <span class="auth-left" id="authMsg">⏳ Connecting...</span>
+</div>
+
 <div class="stats">
   <div class="stat-box high"><div class="num" id="stat-high">0</div><div class="label">🔴 High</div></div>
   <div class="stat-box medium"><div class="num" id="stat-medium">0</div><div class="label">🟡 Medium</div></div>
@@ -378,7 +402,7 @@
       </div>
       <div class="form-group">
         <label>Next Due On</label>
-        <input type="date" id="f-nextdue" placeholder="Auto-calculated">
+        <input type="date" id="f-nextdue">
       </div>
     </div>
     <div class="form-group">
@@ -400,7 +424,25 @@
   </div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
 <script>
+// ── Firebase ──────────────────────────────────────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyCJw-jBCOdrvqLHrRTGbzQTGfSiyYX86e0",
+  authDomain: "tafhim-tracker.firebaseapp.com",
+  projectId: "tafhim-tracker",
+  storageBucket: "tafhim-tracker.firebasestorage.app",
+  messagingSenderId: "888815043166",
+  appId: "1:888815043166:web:c919b49fa060848ed8aacf"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db   = firebase.firestore();
+
+// ── Constants ─────────────────────────────────────────────────────────
 const TODAY = new Date();
 TODAY.setHours(0, 0, 0, 0);
 
@@ -409,20 +451,24 @@ const FREQ_LABELS = {
   once: 'One-time', daily: 'रोज़', '3days': '3-4 दिन',
   weekly: 'हफ्ता', monthly: 'महीना', asneeded: 'जरूरत अनुसार'
 };
-
 const CAT_LABELS = {
   personal: 'Personal', work: 'Work', health: 'Health',
   finance: 'Finance', family: 'Family', home: 'Home', other: 'Other'
 };
 
-function todayStr() {
-  return new Date().toISOString().split('T')[0];
-}
+// ── State ─────────────────────────────────────────────────────────────
+let tasks         = [];
+let editIndex     = -1;
+let currentFilter = 'all';
+let currentUser   = null;
+let unsubSnap     = null;
+
+// ── Helpers ───────────────────────────────────────────────────────────
+function todayStr() { return new Date().toISOString().split('T')[0]; }
 
 function fmt(dateStr) {
   if (!dateStr) return '—';
-  const d = new Date(dateStr);
-  return d.toLocaleDateString('hi-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  return new Date(dateStr).toLocaleDateString('hi-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 function daysUntil(dateStr) {
@@ -434,36 +480,81 @@ function daysUntil(dateStr) {
 
 function calcNextDue(frequency) {
   if (!frequency || frequency === 'once') return '';
-  const days = FREQ_DAYS[frequency] || 7;
   const next = new Date();
-  next.setDate(next.getDate() + days);
+  next.setDate(next.getDate() + (FREQ_DAYS[frequency] || 7));
   return next.toISOString().split('T')[0];
 }
 
 function isOverdue(task) {
-  if (task.status === 'done') return false;
-  return daysUntil(task.date) < 0;
+  return task.status !== 'done' && daysUntil(task.date) < 0;
 }
 
-let tasks = JSON.parse(localStorage.getItem('tafhim-priorities') || '[]');
-let editIndex = -1;
-let currentFilter = 'all';
-
-if (tasks.length === 0) {
-  tasks = [
+function getDefaultTasks() {
+  return [
     { id: 1, title: 'Bank statement लेनी है', priority: 'high', category: 'finance', date: todayStr(), time: '11:00', frequency: 'monthly', nextDue: '', status: 'pending', note: 'SBI branch जाना है। Passbook update भी करवानी है।' },
     { id: 2, title: 'Doctor appointment — check-up', priority: 'high', category: 'health', date: todayStr(), time: '10:00', frequency: 'monthly', nextDue: '', status: 'pending', note: 'BP और sugar test करवाना है।' },
     { id: 3, title: 'Office report submit करना', priority: 'medium', category: 'work', date: todayStr(), time: '14:00', frequency: 'weekly', nextDue: '', status: 'pending', note: 'Monthly progress report।' },
     { id: 4, title: 'बिजली का बिल जमा करना', priority: 'medium', category: 'home', date: todayStr(), time: '', frequency: 'monthly', nextDue: '', status: 'pending', note: '' },
     { id: 5, title: 'बच्चों की fees जमा करना', priority: 'high', category: 'family', date: todayStr(), time: '', frequency: 'monthly', nextDue: '', status: 'pending', note: 'Online payment या school जाकर।' },
   ];
-  save();
+}
+
+// ── Persistence ───────────────────────────────────────────────────────
+function getRef() {
+  return db.collection('users').doc(currentUser.uid).collection('data').doc('tasks');
 }
 
 function save() {
-  localStorage.setItem('tafhim-priorities', JSON.stringify(tasks));
+  if (currentUser) {
+    getRef().set({ items: tasks }).catch(e => console.error('Save error:', e));
+  } else {
+    localStorage.setItem('tafhim-priorities', JSON.stringify(tasks));
+  }
 }
 
+function startSync() {
+  if (unsubSnap) unsubSnap();
+  unsubSnap = getRef().onSnapshot(snap => {
+    if (snap.exists) {
+      tasks = snap.data().items || [];
+    } else {
+      const local = JSON.parse(localStorage.getItem('tafhim-priorities') || '[]');
+      tasks = local.length > 0 ? local : getDefaultTasks();
+      save();
+    }
+    render();
+  }, err => console.error('Sync error:', err));
+}
+
+// ── Auth ──────────────────────────────────────────────────────────────
+function handleAuth() {
+  if (currentUser) {
+    if (unsubSnap) unsubSnap();
+    auth.signOut();
+  } else {
+    auth.signInWithPopup(new firebase.auth.GoogleAuthProvider())
+      .catch(e => alert('Sign-in failed: ' + e.message));
+  }
+}
+
+auth.onAuthStateChanged(user => {
+  const bar = document.getElementById('authBar');
+  if (user) {
+    currentUser = user;
+    bar.className = 'auth-bar signed-in';
+    bar.innerHTML = `<span class="auth-left">☁️ Synced · ${user.email}</span><button class="signout-btn" onclick="handleAuth()">Sign Out</button>`;
+    startSync();
+  } else {
+    currentUser = null;
+    bar.className = 'auth-bar signed-out';
+    bar.innerHTML = `<span class="auth-left">☁️ Sign in to sync across all devices</span><button class="auth-btn" onclick="handleAuth()">Google से Sign In</button>`;
+    tasks = JSON.parse(localStorage.getItem('tafhim-priorities') || '[]');
+    if (tasks.length === 0) { tasks = getDefaultTasks(); localStorage.setItem('tafhim-priorities', JSON.stringify(tasks)); }
+    render();
+  }
+});
+
+// ── Render ────────────────────────────────────────────────────────────
 function render() {
   const list = document.getElementById('tasksList');
   const q = document.getElementById('searchInput').value.toLowerCase();
@@ -471,13 +562,13 @@ function render() {
   let filtered = tasks.filter(t => {
     const matchSearch = !q || t.title.toLowerCase().includes(q) || (t.note || '').toLowerCase().includes(q);
     if (!matchSearch) return false;
-    if (currentFilter === 'all') return t.status !== 'done';
-    if (currentFilter === 'high') return t.priority === 'high' && t.status !== 'done';
-    if (currentFilter === 'today') return t.date === todayStr() && t.status !== 'done';
-    if (currentFilter === 'pending') return t.status === 'pending';
+    if (currentFilter === 'all')       return t.status !== 'done';
+    if (currentFilter === 'high')      return t.priority === 'high' && t.status !== 'done';
+    if (currentFilter === 'today')     return t.date === todayStr() && t.status !== 'done';
+    if (currentFilter === 'pending')   return t.status === 'pending';
     if (currentFilter === 'postponed') return t.status === 'postponed';
-    if (currentFilter === 'done') return t.status === 'done';
-    if (currentFilter === 'overdue') return isOverdue(t);
+    if (currentFilter === 'done')      return t.status === 'done';
+    if (currentFilter === 'overdue')   return isOverdue(t);
     return true;
   });
 
@@ -497,10 +588,10 @@ function render() {
       else lo++;
     }
   });
-  document.getElementById('stat-high').textContent = hi;
+  document.getElementById('stat-high').textContent   = hi;
   document.getElementById('stat-medium').textContent = med;
-  document.getElementById('stat-low').textContent = lo;
-  document.getElementById('stat-total').textContent = tasks.filter(t => t.status !== 'done').length;
+  document.getElementById('stat-low').textContent    = lo;
+  document.getElementById('stat-total').textContent  = tasks.filter(t => t.status !== 'done').length;
 
   if (filtered.length === 0) {
     list.innerHTML = '<div class="empty-state">इस category में कोई काम नहीं है।</div>';
@@ -509,15 +600,15 @@ function render() {
 
   list.innerHTML = filtered.map(t => {
     const realIndex = tasks.indexOf(t);
-    const overdue = isOverdue(t);
-    const days = daysUntil(t.date);
+    const overdue   = isOverdue(t);
+    const days      = daysUntil(t.date);
 
     let dayLabel = '';
     if (t.status !== 'done') {
-      if (days < 0) dayLabel = `${Math.abs(days)}d OVERDUE`;
+      if (days < 0)      dayLabel = `${Math.abs(days)}d OVERDUE`;
       else if (days === 0) dayLabel = 'आज';
       else if (days === 1) dayLabel = 'कल';
-      else dayLabel = `${days}d बाद`;
+      else                 dayLabel = `${days}d बाद`;
     }
 
     const statusBadge = t.status === 'done' ? 'done'
@@ -528,9 +619,8 @@ function render() {
       : t.status === 'postponed' ? '📅 Postponed'
       : overdue ? `⚠️ ${dayLabel}` : `⏳ ${dayLabel}`;
 
-    const cardClass = t.status === 'done' ? `${t.priority} done-card` : t.priority;
-
-    const showNextDue = t.nextDue && t.status !== 'done' && t.frequency !== 'once';
+    const cardClass     = t.status === 'done' ? `${t.priority} done-card` : t.priority;
+    const showNextDue   = t.nextDue && t.status !== 'done' && t.frequency !== 'once';
 
     return `
     <div class="task-card ${cardClass}">
@@ -560,6 +650,7 @@ function render() {
   }).join('');
 }
 
+// ── Actions ───────────────────────────────────────────────────────────
 function setFilter(type, btn) {
   currentFilter = type;
   document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
@@ -568,24 +659,18 @@ function setFilter(type, btn) {
 }
 
 function markDone(index) {
-  const t = tasks[index];
+  const t    = tasks[index];
   const freq = t.frequency;
-
+  t.status   = 'done';
+  t.doneAt   = new Date().toISOString();
   if (freq && freq !== 'once') {
-    const days = FREQ_DAYS[freq] || 7;
     const next = new Date();
-    next.setDate(next.getDate() + days);
-    const nextStr = next.toISOString().split('T')[0];
-
-    t.nextDue = nextStr;
-    t.status = 'done';
-    t.doneAt = new Date().toISOString();
+    next.setDate(next.getDate() + (FREQ_DAYS[freq] || 7));
+    t.nextDue = next.toISOString().split('T')[0];
     save();
     render();
-    alert(`✅ Done!\nअगली बार: ${fmt(nextStr)}\n(Edit करके date update कर सकते हैं)`);
+    alert(`✅ Done!\nअगली बार: ${fmt(t.nextDue)}\n(Edit करके date update कर सकते हैं)`);
   } else {
-    t.status = 'done';
-    t.doneAt = new Date().toISOString();
     save();
     render();
   }
@@ -598,43 +683,44 @@ function markStatus(index, status) {
 }
 
 function postponeTask(index) {
-  const t = tasks[index];
+  const t       = tasks[index];
   const newDate = prompt('नई तारीख डालें (YYYY-MM-DD):', t.date);
   if (!newDate) return;
-  t.date = newDate;
+  t.date   = newDate;
   t.status = 'postponed';
   save();
   render();
 }
 
+// ── Modal ─────────────────────────────────────────────────────────────
 function openAddModal() {
   editIndex = -1;
-  document.getElementById('modalTitle').textContent = 'नया काम जोड़ें';
-  document.getElementById('f-title').value = '';
-  document.getElementById('f-priority').value = 'medium';
-  document.getElementById('f-category').value = 'personal';
-  document.getElementById('f-date').value = todayStr();
-  document.getElementById('f-time').value = '';
-  document.getElementById('f-frequency').value = 'once';
-  document.getElementById('f-nextdue').value = '';
-  document.getElementById('f-status').value = 'pending';
-  document.getElementById('f-note').value = '';
+  document.getElementById('modalTitle').textContent    = 'नया काम जोड़ें';
+  document.getElementById('f-title').value             = '';
+  document.getElementById('f-priority').value          = 'medium';
+  document.getElementById('f-category').value          = 'personal';
+  document.getElementById('f-date').value              = todayStr();
+  document.getElementById('f-time').value              = '';
+  document.getElementById('f-frequency').value         = 'once';
+  document.getElementById('f-nextdue').value           = '';
+  document.getElementById('f-status').value            = 'pending';
+  document.getElementById('f-note').value              = '';
   document.getElementById('modalOverlay').classList.add('active');
 }
 
 function editTask(index) {
   editIndex = index;
   const t = tasks[index];
-  document.getElementById('modalTitle').textContent = 'काम Edit करें';
-  document.getElementById('f-title').value = t.title;
-  document.getElementById('f-priority').value = t.priority;
-  document.getElementById('f-category').value = t.category;
-  document.getElementById('f-date').value = t.date || '';
-  document.getElementById('f-time').value = t.time || '';
-  document.getElementById('f-frequency').value = t.frequency || 'once';
-  document.getElementById('f-nextdue').value = t.nextDue || '';
-  document.getElementById('f-status').value = t.status;
-  document.getElementById('f-note').value = t.note || '';
+  document.getElementById('modalTitle').textContent    = 'काम Edit करें';
+  document.getElementById('f-title').value             = t.title;
+  document.getElementById('f-priority').value          = t.priority;
+  document.getElementById('f-category').value          = t.category;
+  document.getElementById('f-date').value              = t.date || '';
+  document.getElementById('f-time').value              = t.time || '';
+  document.getElementById('f-frequency').value         = t.frequency || 'once';
+  document.getElementById('f-nextdue').value           = t.nextDue || '';
+  document.getElementById('f-status').value            = t.status;
+  document.getElementById('f-note').value              = t.note || '';
   document.getElementById('modalOverlay').classList.add('active');
 }
 
@@ -643,9 +729,8 @@ function closeModal() {
 }
 
 document.getElementById('f-frequency').addEventListener('change', function() {
-  const val = this.value;
-  if (val !== 'once' && !document.getElementById('f-nextdue').value) {
-    document.getElementById('f-nextdue').value = calcNextDue(val);
+  if (this.value !== 'once' && !document.getElementById('f-nextdue').value) {
+    document.getElementById('f-nextdue').value = calcNextDue(this.value);
   }
 });
 
@@ -653,26 +738,23 @@ function saveTask() {
   const title = document.getElementById('f-title').value.trim();
   if (!title) { alert('काम का नाम जरूरी है!'); return; }
   const date = document.getElementById('f-date').value;
-  if (!date) { alert('तारीख जरूरी है!'); return; }
+  if (!date)  { alert('तारीख जरूरी है!'); return; }
 
   const task = {
-    id: editIndex >= 0 ? tasks[editIndex].id : Date.now(),
+    id:        editIndex >= 0 ? tasks[editIndex].id : Date.now(),
     title,
-    priority: document.getElementById('f-priority').value,
-    category: document.getElementById('f-category').value,
+    priority:  document.getElementById('f-priority').value,
+    category:  document.getElementById('f-category').value,
     date,
-    time: document.getElementById('f-time').value,
+    time:      document.getElementById('f-time').value,
     frequency: document.getElementById('f-frequency').value,
-    nextDue: document.getElementById('f-nextdue').value,
-    status: document.getElementById('f-status').value,
-    note: document.getElementById('f-note').value.trim()
+    nextDue:   document.getElementById('f-nextdue').value,
+    status:    document.getElementById('f-status').value,
+    note:      document.getElementById('f-note').value.trim()
   };
 
-  if (editIndex >= 0) {
-    tasks[editIndex] = task;
-  } else {
-    tasks.push(task);
-  }
+  if (editIndex >= 0) tasks[editIndex] = task;
+  else tasks.push(task);
 
   save();
   closeModal();
@@ -692,8 +774,6 @@ document.getElementById('modalOverlay').addEventListener('click', function(e) {
 
 document.getElementById('dateDisplay').textContent =
   new Date().toLocaleDateString('hi-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-
-render();
 </script>
 </body>
 </html>

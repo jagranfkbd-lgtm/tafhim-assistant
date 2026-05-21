@@ -310,6 +310,25 @@
     color: var(--accent);
     margin-bottom: 4px;
   }
+
+  .auth-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    margin-bottom: 16px;
+    font-size: 0.72rem;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .auth-bar.loading { background: var(--surface); border: 1px solid var(--border); color: var(--muted); }
+  .auth-bar.signed-out { background: #1a1200; border: 1px solid var(--accent); color: var(--accent); }
+  .auth-bar.signed-in { background: #001a0a; border: 1px solid var(--ok); color: var(--ok); }
+  .auth-bar .auth-left { flex: 1; }
+  .auth-btn { background: var(--accent); color: #000; border: none; padding: 5px 12px; border-radius: 3px; font-size: 0.7rem; cursor: pointer; font-weight: 700; font-family: 'Noto Sans Devanagari', sans-serif; white-space: nowrap; }
+  .signout-btn { background: transparent; color: var(--muted); border: 1px solid var(--border); padding: 4px 8px; border-radius: 3px; font-size: 0.65rem; cursor: pointer; font-family: 'JetBrains Mono', monospace; white-space: nowrap; }
+  .signout-btn:hover { color: var(--urgent); border-color: var(--urgent); }
 </style>
 </head>
 <body>
@@ -318,6 +337,10 @@
   <h1>📰 Story Follow-up Tracker</h1>
   <p id="dateDisplay"></p>
 </header>
+
+<div class="auth-bar loading" id="authBar">
+  <span class="auth-left" id="authMsg">⏳ Connecting...</span>
+</div>
 
 <div class="stats">
   <div class="stat-box urgent"><div class="num" id="stat-urgent">0</div><div class="label">🔴 Urgent</div></div>
@@ -394,10 +417,35 @@
   </div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
 <script>
+// ── Firebase setup ──────────────────────────────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyCJw-jBCOdrvqLHrRTGbzQTGfSiyYX86e0",
+  authDomain: "tafhim-tracker.firebaseapp.com",
+  projectId: "tafhim-tracker",
+  storageBucket: "tafhim-tracker.firebasestorage.app",
+  messagingSenderId: "888815043166",
+  appId: "1:888815043166:web:c919b49fa060848ed8aacf"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+// ── State ────────────────────────────────────────────────────────────
 const TODAY = new Date();
 TODAY.setHours(0,0,0,0);
 
+let stories = [];
+let editIndex = -1;
+let currentFilter = 'all';
+let currentUser = null;
+let unsubSnap = null;
+
+// ── Helper functions ─────────────────────────────────────────────────
 function fmt(d) {
   if (!d) return '—';
   const dt = new Date(d);
@@ -433,102 +481,6 @@ function getBadgeClass(story) {
   if (story.type === 'deadline') return 'deadline';
   if (story.type === 'series') return 'series';
   return getStatus(story);
-}
-
-let stories = JSON.parse(localStorage.getItem('tafhim-stories') || '[]');
-let editIndex = -1;
-let currentFilter = 'all';
-
-if (stories.length === 0) {
-  stories = [
-    { id: 1, title: 'PMFBY फसल बीमा योजना', category: 'agriculture', type: 'investigation', lastDate: '2026-05-18', nextDate: '2026-05-25', frequency: 'weekly', note: 'आज story file होनी है। उपनिदेशक कृषि प्रसार का version लेना बाकी है। एक हफ्ते बाद follow-up।' },
-    { id: 2, title: 'गेहूं खरीद — follow-up', category: 'agriculture', type: 'followup', lastDate: '', nextDate: '2026-05-18', frequency: '3days', note: 'आज ही story देने की कोशिश। खरीद की ताज़ा स्थिति और आंकड़े लेने हैं।' },
-    { id: 3, title: 'जनगणना — इतिहास और angles', category: 'govt', type: 'followup', lastDate: '', nextDate: '2026-05-20', frequency: 'weekly', note: 'कई angles हैं — clarification और version लेना है। 1-2 दिन में mature होगी।' },
-    { id: 4, title: 'Farmer Registry — नए आंकड़े व अंतिम तिथि', category: 'agriculture', type: 'followup', lastDate: '2026-05-14', nextDate: '2026-05-19', frequency: '3days', note: 'नए सिरे से आंकड़े और अंतिम तिथि का विवरण देना है।' },
-    { id: 5, title: 'कीटनाशक विक्रेता दुकान निलंबन — स्थिति', category: 'investigation', type: 'followup', lastDate: '', nextDate: '2026-05-20', frequency: 'asneeded', note: 'क्या स्थिति है — update लेना है।' },
-    { id: 6, title: 'Outsource Bharti — JAAM vs Sevayojan Portal comparison', category: 'investigation', type: 'investigation', lastDate: '', nextDate: '2026-05-21', frequency: 'asneeded', note: 'दोनों portals के photos compare करके खबर निकालनी है।' },
-    { id: 7, title: 'PM आवास योजना — प्रगति रिपोर्ट', category: 'govt', type: 'followup', lastDate: '', nextDate: '2026-05-23', frequency: 'weekly', note: 'क्या प्रगति हो रही है — नजर रखनी है।' },
-    { id: 8, title: 'ग्रामीण आजीविका मिशन — Drone Didi focus', category: 'govt', type: 'followup', lastDate: '', nextDate: '2026-05-22', frequency: 'weekly', note: 'Drone Didi पर focus करना है।' },
-    { id: 9, title: 'मुख्य पशु चिकित्सा अधिकारी — Gopal को सूची', category: 'govt', type: 'followup', lastDate: '', nextDate: '2026-05-20', frequency: 'asneeded', note: 'Gopal को की सूची प्राप्त करनी है और खबर निकालनी है।' },
-    { id: 10, title: 'पंचायत राज — सफाई कर्मी तैनाती गोलमाल (Series)', category: 'panchayat', type: 'series', lastDate: '', nextDate: '2026-05-19', frequency: '3days', note: 'पूरी series चलानी है। हर 3-4 दिन में एक part।' },
-    { id: 11, title: 'Waqf संपत्ति पंजीकरण — अंतिम तिथि 5 जून', category: 'govt', type: 'deadline', lastDate: '', nextDate: '2026-05-25', frequency: 'weekly', note: '5 जून deadline तक कम से कम 2 खबरें देनी हैं।' },
-    { id: 12, title: 'CM Dashboard — Analytical story', category: 'govt', type: 'followup', lastDate: '2026-05-10', nextDate: '2026-05-22', frequency: 'asneeded', note: 'एक खबर जा चुकी है। Analytical angle पर एक और निकलेगी।' },
-    { id: 13, title: 'सिखलाई रेजीमेंट Passing Out Parade — 21 मई', category: 'event', type: 'deadline', lastDate: '', nextDate: '2026-05-21', frequency: 'asneeded', note: '21 मई को event है। Coverage plan करें।' },
-    { id: 14, title: 'पंचायत मतदाता सूची — अंतिम प्रकाशन 5-6 जून', category: 'panchayat', type: 'deadline', lastDate: '', nextDate: '2026-05-28', frequency: 'asneeded', note: '28-30 मई में खबर दी जा सकती है। 5-6 जून को final publication।' },
-    { id: 15, title: 'पंचायत राज Audit — आपत्तियां pending', category: 'panchayat', type: 'investigation', lastDate: '', nextDate: '2026-05-20', frequency: 'weekly', note: 'Audit reports पर pending आपत्तियां — खबर बन सकती है।' },
-    { id: 16, title: 'ग्राम पंचायत Digital Library', category: 'panchayat', type: 'followup', lastDate: '', nextDate: '2026-05-23', frequency: 'asneeded', note: 'स्थापना और शुरुआत पर एक खबर।' },
-    { id: 17, title: 'MNREGA की जगह नई योजना', category: 'govt', type: 'followup', lastDate: '', nextDate: '2026-05-25', frequency: 'weekly', note: 'नई योजना शुरू होने वाली है — नजर रखनी है।' },
-    { id: 18, title: 'PWD Inspection Bungalow — e-booking स्थिति', category: 'govt', type: 'followup', lastDate: '', nextDate: '2026-05-22', frequency: 'asneeded', note: 'e-booking की वर्तमान स्थिति देखनी है।' },
-  ];
-  save();
-}
-
-function save() {
-  localStorage.setItem('tafhim-stories', JSON.stringify(stories));
-}
-
-function render() {
-  const list = document.getElementById('storiesList');
-
-  let filtered = stories.filter(s => {
-    if (currentFilter === 'all') return true;
-    if (currentFilter === 'urgent') return getStatus(s) === 'urgent';
-    if (currentFilter === 'today') return daysUntil(s.nextDate) === 0;
-    if (currentFilter === 'deadline') return s.type === 'deadline';
-    if (currentFilter === 'series') return s.type === 'series';
-    return true;
-  });
-
-  filtered.sort((a, b) => daysUntil(a.nextDate) - daysUntil(b.nextDate));
-
-  let u = 0, w = 0, ok = 0;
-  stories.forEach(s => {
-    const st = getStatus(s);
-    if (st === 'urgent') u++;
-    else if (st === 'warning') w++;
-    else ok++;
-  });
-  document.getElementById('stat-urgent').textContent = u;
-  document.getElementById('stat-warning').textContent = w;
-  document.getElementById('stat-ok').textContent = ok;
-  document.getElementById('stat-total').textContent = stories.length;
-
-  if (filtered.length === 0) {
-    list.innerHTML = '<div class="empty-state">इस category में कोई story नहीं है।</div>';
-    return;
-  }
-
-  list.innerHTML = filtered.map(s => {
-    const status = getStatus(s);
-    const badgeClass = getBadgeClass(s);
-    const badgeLabel = getBadgeLabel(s);
-    const realIndex = stories.indexOf(s);
-
-    let cardClass = 'ok';
-    if (status === 'urgent') cardClass = 'urgent';
-    else if (status === 'warning') cardClass = 'warning';
-    else if (s.type === 'deadline') cardClass = 'deadline';
-    else if (s.type === 'series') cardClass = 'series';
-
-    return `
-    <div class="story-card ${cardClass}">
-      <div class="card-top">
-        <div class="story-title">${s.title}</div>
-        <span class="badge ${badgeClass}">${badgeLabel}</span>
-      </div>
-      <div class="card-meta">
-        <div class="meta-item">📅 अगली: <span>${fmt(s.nextDate)}</span></div>
-        ${s.lastDate ? `<div class="meta-item">✅ पिछली: <span>${fmt(s.lastDate)}</span></div>` : ''}
-        <div class="meta-item">🔄 <span>${freqLabel(s.frequency)}</span></div>
-      </div>
-      ${s.note ? `<div class="card-note">💬 ${s.note}</div>` : ''}
-      <div class="card-actions">
-        <button class="action-btn done" onclick="markDone(${realIndex})">✅ खबर गई</button>
-        <button class="action-btn" onclick="editStory(${realIndex})">✏️ Edit</button>
-        <button class="action-btn" onclick="deleteStory(${realIndex})">🗑️</button>
-      </div>
-    </div>`;
-  }).join('');
 }
 
 function freqLabel(f) {
@@ -625,15 +577,153 @@ function deleteStory(index) {
   render();
 }
 
-// Close modal on overlay click
+function render() {
+  const list = document.getElementById('storiesList');
+
+  let filtered = stories.filter(s => {
+    if (currentFilter === 'all') return true;
+    if (currentFilter === 'urgent') return getStatus(s) === 'urgent';
+    if (currentFilter === 'today') return daysUntil(s.nextDate) === 0;
+    if (currentFilter === 'deadline') return s.type === 'deadline';
+    if (currentFilter === 'series') return s.type === 'series';
+    return true;
+  });
+
+  filtered.sort((a, b) => daysUntil(a.nextDate) - daysUntil(b.nextDate));
+
+  let u = 0, w = 0, ok = 0;
+  stories.forEach(s => {
+    const st = getStatus(s);
+    if (st === 'urgent') u++;
+    else if (st === 'warning') w++;
+    else ok++;
+  });
+  document.getElementById('stat-urgent').textContent = u;
+  document.getElementById('stat-warning').textContent = w;
+  document.getElementById('stat-ok').textContent = ok;
+  document.getElementById('stat-total').textContent = stories.length;
+
+  if (filtered.length === 0) {
+    list.innerHTML = '<div class="empty-state">इस category में कोई story नहीं है।</div>';
+    return;
+  }
+
+  list.innerHTML = filtered.map(s => {
+    const status = getStatus(s);
+    const badgeClass = getBadgeClass(s);
+    const badgeLabel = getBadgeLabel(s);
+    const realIndex = stories.indexOf(s);
+
+    let cardClass = 'ok';
+    if (status === 'urgent') cardClass = 'urgent';
+    else if (status === 'warning') cardClass = 'warning';
+    else if (s.type === 'deadline') cardClass = 'deadline';
+    else if (s.type === 'series') cardClass = 'series';
+
+    return `
+    <div class="story-card ${cardClass}">
+      <div class="card-top">
+        <div class="story-title">${s.title}</div>
+        <span class="badge ${badgeClass}">${badgeLabel}</span>
+      </div>
+      <div class="card-meta">
+        <div class="meta-item">📅 अगली: <span>${fmt(s.nextDate)}</span></div>
+        ${s.lastDate ? `<div class="meta-item">✅ पिछली: <span>${fmt(s.lastDate)}</span></div>` : ''}
+        <div class="meta-item">🔄 <span>${freqLabel(s.frequency)}</span></div>
+      </div>
+      ${s.note ? `<div class="card-note">💬 ${s.note}</div>` : ''}
+      <div class="card-actions">
+        <button class="action-btn done" onclick="markDone(${realIndex})">✅ खबर गई</button>
+        <button class="action-btn" onclick="editStory(${realIndex})">✏️ Edit</button>
+        <button class="action-btn" onclick="deleteStory(${realIndex})">🗑️</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Save: Firestore when signed in, localStorage fallback ────────────
+function save() {
+  if (currentUser) {
+    db.collection('users').doc(currentUser.uid).collection('data').doc('stories')
+      .set({ items: stories }).catch(e => console.error('Save error:', e));
+  } else {
+    localStorage.setItem('tafhim-stories', JSON.stringify(stories));
+  }
+}
+
+// ── Default stories ──────────────────────────────────────────────────
+function getDefaultStories() {
+  return [
+    { id: 1, title: 'PMFBY फसल बीमा योजना', category: 'agriculture', type: 'investigation', lastDate: '2026-05-18', nextDate: '2026-05-25', frequency: 'weekly', note: 'आज story file होनी है। उपनिदेशक कृषि प्रसार का version लेना बाकी है। एक हफ्ते बाद follow-up।' },
+    { id: 2, title: 'गेहूं खरीद — follow-up', category: 'agriculture', type: 'followup', lastDate: '', nextDate: '2026-05-18', frequency: '3days', note: 'आज ही story देने की कोशिश। खरीद की ताज़ा स्थिति और आंकड़े लेने हैं।' },
+    { id: 3, title: 'जनगणना — इतिहास और angles', category: 'govt', type: 'followup', lastDate: '', nextDate: '2026-05-20', frequency: 'weekly', note: 'कई angles हैं — clarification और version लेना है। 1-2 दिन में mature होगी।' },
+    { id: 4, title: 'Farmer Registry — नए आंकड़े व अंतिम तिथि', category: 'agriculture', type: 'followup', lastDate: '2026-05-14', nextDate: '2026-05-19', frequency: '3days', note: 'नए सिरे से आंकड़े और अंतिम तिथि का विवरण देना है।' },
+    { id: 5, title: 'कीटनाशक विक्रेता दुकान निलंबन — स्थिति', category: 'investigation', type: 'followup', lastDate: '', nextDate: '2026-05-20', frequency: 'asneeded', note: 'क्या स्थिति है — update लेना है।' },
+    { id: 6, title: 'Outsource Bharti — JAAM vs Sevayojan Portal comparison', category: 'investigation', type: 'investigation', lastDate: '', nextDate: '2026-05-21', frequency: 'asneeded', note: 'दोनों portals के photos compare करके खबर निकालनी है।' },
+    { id: 7, title: 'PM आवास योजना — प्रगति रिपोर्ट', category: 'govt', type: 'followup', lastDate: '', nextDate: '2026-05-23', frequency: 'weekly', note: 'क्या प्रगति हो रही है — नजर रखनी है।' },
+    { id: 8, title: 'ग्रामीण आजीविका मिशन — Drone Didi focus', category: 'govt', type: 'followup', lastDate: '', nextDate: '2026-05-22', frequency: 'weekly', note: 'Drone Didi पर focus करना है।' },
+    { id: 9, title: 'मुख्य पशु चिकित्सा अधिकारी — Gopal को सूची', category: 'govt', type: 'followup', lastDate: '', nextDate: '2026-05-20', frequency: 'asneeded', note: 'Gopal को की सूची प्राप्त करनी है और खबर निकालनी है।' },
+    { id: 10, title: 'पंचायत राज — सफाई कर्मी तैनाती गोलमाल (Series)', category: 'panchayat', type: 'series', lastDate: '', nextDate: '2026-05-19', frequency: '3days', note: 'पूरी series चलानी है। हर 3-4 दिन में एक part।' },
+    { id: 11, title: 'Waqf संपत्ति पंजीकरण — अंतिम तिथि 5 जून', category: 'govt', type: 'deadline', lastDate: '', nextDate: '2026-05-25', frequency: 'weekly', note: '5 जून deadline तक कम से कम 2 खबरें देनी हैं।' },
+    { id: 12, title: 'CM Dashboard — Analytical story', category: 'govt', type: 'followup', lastDate: '2026-05-10', nextDate: '2026-05-22', frequency: 'asneeded', note: 'एक खबर जा चुकी है। Analytical angle पर एक और निकलेगी।' },
+    { id: 13, title: 'सिखलाई रेजीमेंट Passing Out Parade — 21 मई', category: 'event', type: 'deadline', lastDate: '', nextDate: '2026-05-21', frequency: 'asneeded', note: '21 मई को event है। Coverage plan करें।' },
+    { id: 14, title: 'पंचायत मतदाता सूची — अंतिम प्रकाशन 5-6 जून', category: 'panchayat', type: 'deadline', lastDate: '', nextDate: '2026-05-28', frequency: 'asneeded', note: '28-30 मई में खबर दी जा सकती है। 5-6 जून को final publication।' },
+    { id: 15, title: 'पंचायत राज Audit — आपत्तियां pending', category: 'panchayat', type: 'investigation', lastDate: '', nextDate: '2026-05-20', frequency: 'weekly', note: 'Audit reports पर pending आपत्तियां — खबर बन सकती है।' },
+    { id: 16, title: 'ग्राम पंचायत Digital Library', category: 'panchayat', type: 'followup', lastDate: '', nextDate: '2026-05-23', frequency: 'asneeded', note: 'स्थापना और शुरुआत पर एक खबर।' },
+    { id: 17, title: 'MNREGA की जगह नई योजना', category: 'govt', type: 'followup', lastDate: '', nextDate: '2026-05-25', frequency: 'weekly', note: 'नई योजना शुरू होने वाली है — नजर रखनी है।' },
+    { id: 18, title: 'PWD Inspection Bungalow — e-booking स्थिति', category: 'govt', type: 'followup', lastDate: '', nextDate: '2026-05-22', frequency: 'asneeded', note: 'e-booking की वर्तमान स्थिति देखनी है।' },
+  ];
+}
+
+// ── Firestore real-time sync ─────────────────────────────────────────
+function startSync() {
+  if (unsubSnap) unsubSnap();
+  const ref = db.collection('users').doc(currentUser.uid).collection('data').doc('stories');
+  unsubSnap = ref.onSnapshot(snap => {
+    if (snap.exists) {
+      stories = snap.data().items || [];
+    } else {
+      const local = JSON.parse(localStorage.getItem('tafhim-stories') || '[]');
+      stories = local.length > 0 ? local : getDefaultStories();
+      save();
+    }
+    render();
+  }, err => console.error('Sync error:', err));
+}
+
+// ── Auth ─────────────────────────────────────────────────────────────
+function handleAuth() {
+  if (currentUser) {
+    if (unsubSnap) unsubSnap();
+    auth.signOut();
+  } else {
+    auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(e => alert('Sign-in failed: ' + e.message));
+  }
+}
+
+auth.onAuthStateChanged(user => {
+  const bar = document.getElementById('authBar');
+  if (user) {
+    currentUser = user;
+    bar.className = 'auth-bar signed-in';
+    bar.innerHTML = `<span class="auth-left">☁️ Synced · ${user.email}</span><button class="signout-btn" onclick="handleAuth()">Sign Out</button>`;
+    startSync();
+  } else {
+    currentUser = null;
+    bar.className = 'auth-bar signed-out';
+    bar.innerHTML = `<span class="auth-left">☁️ Sign in to sync across all devices</span><button class="auth-btn" onclick="handleAuth()">Google से Sign In</button>`;
+    stories = JSON.parse(localStorage.getItem('tafhim-stories') || '[]');
+    if (stories.length === 0) { stories = getDefaultStories(); localStorage.setItem('tafhim-stories', JSON.stringify(stories)); }
+    render();
+  }
+});
+
 document.getElementById('modalOverlay').addEventListener('click', function(e) {
   if (e.target === this) closeModal();
 });
 
 document.getElementById('dateDisplay').textContent =
   new Date().toLocaleDateString('hi-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-
-render();
 </script>
 </body>
 </html>
