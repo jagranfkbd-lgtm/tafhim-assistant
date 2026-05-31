@@ -65,6 +65,20 @@
   .signout-btn { background: transparent; color: var(--muted); border: 1px solid var(--border); padding: 4px 8px; border-radius: 3px; font-size: 0.65rem; cursor: pointer; font-family: 'JetBrains Mono', monospace; white-space: nowrap; }
   .signout-btn:hover { color: var(--high); border-color: var(--high); }
 
+  .trash-card {
+    background: var(--surface);
+    border: 1px solid #333;
+    border-left: 4px solid #444;
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 10px;
+    opacity: 0.75;
+  }
+  .restore-btn { border-color: var(--done-color) !important; color: var(--done-color) !important; }
+  .restore-btn:hover { background: var(--done-color) !important; color: #000 !important; }
+  .perm-del-btn { border-color: var(--high) !important; color: var(--high) !important; }
+  .perm-del-btn:hover { background: var(--high) !important; color: #fff !important; }
+
   .stats {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -343,6 +357,7 @@
   <button class="filter-btn" onclick="setFilter('postponed', this)">Postponed</button>
   <button class="filter-btn" onclick="setFilter('done', this)">✅ Done</button>
   <button class="filter-btn" onclick="setFilter('overdue', this)">⚠️ Overdue</button>
+  <button class="filter-btn" id="trash-btn" onclick="setFilter('trash', this)">🗑️ Trash</button>
   <button class="add-btn" onclick="openAddModal()">+ नया काम</button>
 </div>
 
@@ -458,6 +473,7 @@ const CAT_LABELS = {
 
 // ── State ─────────────────────────────────────────────────────────────
 let tasks         = [];
+let deleted       = [];
 let editIndex     = -1;
 let currentFilter = 'all';
 let currentUser   = null;
@@ -506,9 +522,10 @@ function getRef() {
 
 function save() {
   if (currentUser) {
-    getRef().set({ items: tasks }).catch(e => console.error('Save error:', e));
+    getRef().set({ items: tasks, deleted: deleted }).catch(e => console.error('Save error:', e));
   } else {
     localStorage.setItem('tafhim-priorities', JSON.stringify(tasks));
+    localStorage.setItem('tafhim-priorities-deleted', JSON.stringify(deleted));
   }
 }
 
@@ -516,10 +533,12 @@ function startSync() {
   if (unsubSnap) unsubSnap();
   unsubSnap = getRef().onSnapshot(snap => {
     if (snap.exists) {
-      tasks = snap.data().items || [];
+      tasks   = snap.data().items || [];
+      deleted = snap.data().deleted || [];
     } else {
       const local = JSON.parse(localStorage.getItem('tafhim-priorities') || '[]');
-      tasks = local.length > 0 ? local : getDefaultTasks();
+      tasks   = local.length > 0 ? local : getDefaultTasks();
+      deleted = JSON.parse(localStorage.getItem('tafhim-priorities-deleted') || '[]');
       save();
     }
     render();
@@ -548,7 +567,8 @@ auth.onAuthStateChanged(user => {
     currentUser = null;
     bar.className = 'auth-bar signed-out';
     bar.innerHTML = `<span class="auth-left">☁️ Sign in to sync across all devices</span><button class="auth-btn" onclick="handleAuth()">Google से Sign In</button>`;
-    tasks = JSON.parse(localStorage.getItem('tafhim-priorities') || '[]');
+    tasks   = JSON.parse(localStorage.getItem('tafhim-priorities') || '[]');
+    deleted = JSON.parse(localStorage.getItem('tafhim-priorities-deleted') || '[]');
     if (tasks.length === 0) { tasks = getDefaultTasks(); localStorage.setItem('tafhim-priorities', JSON.stringify(tasks)); }
     render();
   }
@@ -557,7 +577,41 @@ auth.onAuthStateChanged(user => {
 // ── Render ────────────────────────────────────────────────────────────
 function render() {
   const list = document.getElementById('tasksList');
-  const q = document.getElementById('searchInput').value.toLowerCase();
+  const q    = document.getElementById('searchInput').value.toLowerCase();
+
+  // Update trash button count
+  const trashBtn = document.getElementById('trash-btn');
+  if (trashBtn) trashBtn.textContent = deleted.length > 0 ? `🗑️ Trash (${deleted.length})` : '🗑️ Trash';
+
+  // Trash view
+  if (currentFilter === 'trash') {
+    let hi = 0, med = 0, lo = 0;
+    tasks.forEach(t => { if (t.status !== 'done') { if (t.priority === 'high') hi++; else if (t.priority === 'medium') med++; else lo++; } });
+    document.getElementById('stat-high').textContent   = hi;
+    document.getElementById('stat-medium').textContent = med;
+    document.getElementById('stat-low').textContent    = lo;
+    document.getElementById('stat-total').textContent  = tasks.filter(t => t.status !== 'done').length;
+    if (deleted.length === 0) {
+      list.innerHTML = '<div class="empty-state">🗑️ Trash खाली है।</div>';
+      return;
+    }
+    list.innerHTML = deleted.map((t, i) => `
+      <div class="trash-card">
+        <div class="card-top">
+          <div class="task-title" style="text-decoration:line-through;color:var(--muted)">${t.title}</div>
+          <span class="badge" style="background:#222;color:#666;border:1px solid #444">🗑️ DELETED</span>
+        </div>
+        <div class="card-meta">
+          <div class="meta-item">🕐 Deleted: <span>${t.deletedAt ? fmt(t.deletedAt.split('T')[0]) : '—'}</span></div>
+          <div class="meta-item">🏷️ <span>${CAT_LABELS[t.category] || t.category}</span></div>
+        </div>
+        <div class="card-actions">
+          <button class="action-btn restore-btn" onclick="restoreTask(${i})">↩️ Restore</button>
+          <button class="action-btn perm-del-btn" onclick="permanentDeleteTask(${i})">🗑️ हमेशा के लिए Delete</button>
+        </div>
+      </div>`).join('');
+    return;
+  }
 
   let filtered = tasks.filter(t => {
     const matchSearch = !q || t.title.toLowerCase().includes(q) || (t.note || '').toLowerCase().includes(q);
@@ -762,8 +816,25 @@ function saveTask() {
 }
 
 function deleteTask(index) {
-  if (!confirm(`"${tasks[index].title}" delete करें?`)) return;
-  tasks.splice(index, 1);
+  if (!confirm(`"${tasks[index].title}" Trash में भेजें?\n\nTrash से वापस restore हो सकता है।`)) return;
+  const item = tasks.splice(index, 1)[0];
+  item.deletedAt = new Date().toISOString();
+  deleted.push(item);
+  save();
+  render();
+}
+
+function restoreTask(index) {
+  const item = deleted.splice(index, 1)[0];
+  delete item.deletedAt;
+  tasks.push(item);
+  save();
+  render();
+}
+
+function permanentDeleteTask(index) {
+  if (!confirm('हमेशा के लिए delete करें? यह वापस नहीं आएगा।')) return;
+  deleted.splice(index, 1);
   save();
   render();
 }
