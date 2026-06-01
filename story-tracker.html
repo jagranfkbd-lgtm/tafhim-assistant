@@ -329,6 +329,20 @@
   .auth-btn { background: var(--accent); color: #000; border: none; padding: 5px 12px; border-radius: 3px; font-size: 0.7rem; cursor: pointer; font-weight: 700; font-family: 'Noto Sans Devanagari', sans-serif; white-space: nowrap; }
   .signout-btn { background: transparent; color: var(--muted); border: 1px solid var(--border); padding: 4px 8px; border-radius: 3px; font-size: 0.65rem; cursor: pointer; font-family: 'JetBrains Mono', monospace; white-space: nowrap; }
   .signout-btn:hover { color: var(--urgent); border-color: var(--urgent); }
+
+  .trash-card {
+    background: var(--surface);
+    border: 1px solid #333;
+    border-left: 4px solid #444;
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 10px;
+    opacity: 0.75;
+  }
+  .restore-btn { border-color: var(--ok) !important; color: var(--ok) !important; }
+  .restore-btn:hover { background: var(--ok) !important; color: #000 !important; }
+  .perm-del-btn { border-color: var(--urgent) !important; color: var(--urgent) !important; }
+  .perm-del-btn:hover { background: var(--urgent) !important; color: #fff !important; }
 </style>
 </head>
 <body>
@@ -355,6 +369,7 @@
   <button class="filter-btn" onclick="filterStories('today', this)">आज</button>
   <button class="filter-btn" onclick="filterStories('deadline', this)">Deadline</button>
   <button class="filter-btn" onclick="filterStories('series', this)">Series</button>
+  <button class="filter-btn" id="trash-btn" onclick="filterStories('trash', this)">🗑️ Trash</button>
   <button class="add-btn" onclick="openAddModal()">+ नई Story</button>
 </div>
 
@@ -440,6 +455,7 @@ const TODAY = new Date();
 TODAY.setHours(0,0,0,0);
 
 let stories = [];
+let deleted = [];
 let editIndex = -1;
 let currentFilter = 'all';
 let currentUser = null;
@@ -571,14 +587,65 @@ function saveStory() {
 }
 
 function deleteStory(index) {
-  if (!confirm(`"${stories[index].title}" delete करें?`)) return;
-  stories.splice(index, 1);
+  if (!confirm(`"${stories[index].title}" Trash में भेजें?\n\nTrash से वापस restore हो सकती है।`)) return;
+  const item = stories.splice(index, 1)[0];
+  item.deletedAt = new Date().toISOString();
+  deleted.push(item);
+  save();
+  render();
+}
+
+function restoreStory(index) {
+  const item = deleted.splice(index, 1)[0];
+  delete item.deletedAt;
+  stories.push(item);
+  save();
+  render();
+}
+
+function permanentDeleteStory(index) {
+  if (!confirm('हमेशा के लिए delete करें? यह वापस नहीं आएगा।')) return;
+  deleted.splice(index, 1);
   save();
   render();
 }
 
 function render() {
   const list = document.getElementById('storiesList');
+
+  // Update trash button count
+  const trashBtn = document.getElementById('trash-btn');
+  if (trashBtn) trashBtn.textContent = deleted.length > 0 ? `🗑️ Trash (${deleted.length})` : '🗑️ Trash';
+
+  // Trash view
+  if (currentFilter === 'trash') {
+    let u = 0, w = 0, ok = 0;
+    stories.forEach(s => { const st = getStatus(s); if (st === 'urgent') u++; else if (st === 'warning') w++; else ok++; });
+    document.getElementById('stat-urgent').textContent = u;
+    document.getElementById('stat-warning').textContent = w;
+    document.getElementById('stat-ok').textContent = ok;
+    document.getElementById('stat-total').textContent = stories.length;
+    if (deleted.length === 0) {
+      list.innerHTML = '<div class="empty-state">🗑️ Trash खाली है।</div>';
+      return;
+    }
+    list.innerHTML = deleted.map((s, i) => `
+      <div class="trash-card">
+        <div class="card-top">
+          <div class="story-title" style="text-decoration:line-through;color:var(--muted)">${s.title}</div>
+          <span class="badge" style="background:#222;color:#666;border:1px solid #444">🗑️ DELETED</span>
+        </div>
+        <div class="card-meta">
+          <div class="meta-item">🕐 Deleted: <span>${s.deletedAt ? fmt(s.deletedAt.split('T')[0]) : '—'}</span></div>
+          ${s.nextDate ? `<div class="meta-item">📅 अगली: <span>${fmt(s.nextDate)}</span></div>` : ''}
+        </div>
+        <div class="card-actions">
+          <button class="action-btn restore-btn" onclick="restoreStory(${i})">↩️ Restore</button>
+          <button class="action-btn perm-del-btn" onclick="permanentDeleteStory(${i})">🗑️ हमेशा के लिए Delete</button>
+        </div>
+      </div>`).join('');
+    return;
+  }
 
   let filtered = stories.filter(s => {
     if (currentFilter === 'all') return true;
@@ -645,9 +712,10 @@ function render() {
 function save() {
   if (currentUser) {
     db.collection('users').doc(currentUser.uid).collection('data').doc('stories')
-      .set({ items: stories }).catch(e => console.error('Save error:', e));
+      .set({ items: stories, deleted: deleted }).catch(e => console.error('Save error:', e));
   } else {
     localStorage.setItem('tafhim-stories', JSON.stringify(stories));
+    localStorage.setItem('tafhim-stories-deleted', JSON.stringify(deleted));
   }
 }
 
@@ -682,9 +750,11 @@ function startSync() {
   unsubSnap = ref.onSnapshot(snap => {
     if (snap.exists) {
       stories = snap.data().items || [];
+      deleted = snap.data().deleted || [];
     } else {
       const local = JSON.parse(localStorage.getItem('tafhim-stories') || '[]');
       stories = local.length > 0 ? local : getDefaultStories();
+      deleted = JSON.parse(localStorage.getItem('tafhim-stories-deleted') || '[]');
       save();
     }
     render();
@@ -713,6 +783,7 @@ auth.onAuthStateChanged(user => {
     bar.className = 'auth-bar signed-out';
     bar.innerHTML = `<span class="auth-left">☁️ Sign in to sync across all devices</span><button class="auth-btn" onclick="handleAuth()">Google से Sign In</button>`;
     stories = JSON.parse(localStorage.getItem('tafhim-stories') || '[]');
+    deleted = JSON.parse(localStorage.getItem('tafhim-stories-deleted') || '[]');
     if (stories.length === 0) { stories = getDefaultStories(); localStorage.setItem('tafhim-stories', JSON.stringify(stories)); }
     render();
   }
