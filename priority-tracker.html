@@ -521,14 +521,26 @@ function getRef() {
 }
 
 function save() {
-  if (currentUser) {
-    getRef().set({ items: tasks, deleted: deleted }).catch(e => console.error('Save error:', e));
-  } else {
-    localStorage.setItem('tafhim-priorities', JSON.stringify(tasks));
-    localStorage.setItem('tafhim-priorities-deleted', JSON.stringify(deleted));
-  }
-}
+    if (currentUser) {
+          // Private save (existing)
+          getRef().set({ items: tasks, deleted: deleted }).catch(e => console.error('Save error:', e));
 
+          // Public summary for Claude
+          db.collection('public').doc('tasks')
+            .set({
+                      items: tasks.map(t => ({
+                                  id: t.id, title: t.title, priority: t.priority,
+                                  category: t.category, date: t.date, time: t.time,
+                                  frequency: t.frequency, nextDue: t.nextDue,
+                                  status: t.status, note: t.note
+                      })),
+                      updatedAt: new Date().toISOString()
+            }).catch(e => console.error('Public tasks save error:', e));
+    } else {
+          localStorage.setItem('tafhim-priorities', JSON.stringify(tasks));
+          localStorage.setItem('tafhim-priorities-deleted', JSON.stringify(deleted));
+    }
+}
 function startSync() {
   if (unsubSnap) unsubSnap();
   unsubSnap = getRef().onSnapshot(snap => {
