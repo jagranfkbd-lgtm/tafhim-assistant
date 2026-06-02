@@ -41,7 +41,7 @@
 
   header h1 {
     font-size: 1.4rem;
-    color: var(--accent);
+    color: var(--accent);h
     letter-spacing: 1px;
   }
 
@@ -713,6 +713,13 @@ function save() {
   if (currentUser) {
     db.collection('users').doc(currentUser.uid).collection('data').doc('stories')
       .set({ items: stories, deleted: deleted }).catch(e => console.error('Save error:', e));
+
+        // public summary
+        db.collection('public').doc('stories')
+          .set({
+                    items: stories,
+                    updatedAt: new Date().toISOString()
+          }).catch(e => console.error('Public save error:', e));
   } else {
     localStorage.setItem('tafhim-stories', JSON.stringify(stories));
     localStorage.setItem('tafhim-stories-deleted', JSON.stringify(deleted));
