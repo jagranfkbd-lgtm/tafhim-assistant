@@ -8,7 +8,7 @@
   @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
 
   :root {
-    --bg: #0f0f0f;
+    --bg: #0f0f0f;h
     --surface: #1a1a1a;
     --surface2: #222;
     --border: #2a2a2a;
@@ -710,22 +710,26 @@ function render() {
 
 // ── Save: Firestore when signed in, localStorage fallback ────────────
 function save() {
-  if (currentUser) {
-    db.collection('users').doc(currentUser.uid).collection('data').doc('stories')
-      .set({ items: stories, deleted: deleted }).catch(e => console.error('Save error:', e));
+    if (currentUser) {
+          // Private save (existing)
+          db.collection('users').doc(currentUser.uid).collection('data').doc('stories')
+            .set({ items: stories, deleted: deleted }).catch(e => console.error('Save error:', e));
 
-        // public summary
-        db.collection('public').doc('stories')
-          .set({
-                    items: stories,
-                    updatedAt: new Date().toISOString()
-          }).catch(e => console.error('Public save error:', e));
-  } else {
-    localStorage.setItem('tafhim-stories', JSON.stringify(stories));
-    localStorage.setItem('tafhim-stories-deleted', JSON.stringify(deleted));
-  }
+          // Public summary for Claude
+          db.collection('public').doc('stories')
+            .set({
+                      items: stories.map(s => ({
+                                  id: s.id, title: s.title, type: s.type,
+                                  category: s.category, nextDate: s.nextDate,
+                                  lastDate: s.lastDate, frequency: s.frequency, note: s.note
+                      })),
+                      updatedAt: new Date().toISOString()
+            }).catch(e => console.error('Public save error:', e));
+    } else {
+          localStorage.setItem('tafhim-stories', JSON.stringify(stories));
+          localStorage.setItem('tafhim-stories-deleted', JSON.stringify(deleted));
+    }
 }
-
 // ── Default stories ──────────────────────────────────────────────────
 function getDefaultStories() {
   return [
