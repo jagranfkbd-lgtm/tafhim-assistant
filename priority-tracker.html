@@ -45,7 +45,6 @@
   header h1 { font-size: 1.4rem; color: var(--accent); letter-spacing: 1px; }
   header p { font-size: 0.75rem; color: var(--muted); font-family: 'JetBrains Mono', monospace; margin-top: 4px; }
 
-  /* AUTH BAR */
   .auth-bar {
     display: flex;
     align-items: center;
@@ -457,6 +456,36 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db   = firebase.firestore();
 
+// ════════════════════════════════════════════════════════════════════════
+// ── SHEET SYNC CONFIG ─────────────────────────────────────────────────
+const SHEET_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbxXsCpyTu2i1eZ9Cru92Ok0mQFmgiAN-uI5IAOI0a0VW9JD6zsIOpJk5K-J1gDAEs08/exec';
+const TRACKER_URL = 'https://jagranfkbd-lgtm.github.io/tafhim-assistant/priority-tracker.html';
+
+// ── pushToSheet: syncs all active tasks to Google Sheet ───────────────
+function pushToSheet() {
+  if (!SHEET_WEBHOOK_URL) return;
+  const activeTasks = tasks.filter(t => t.status !== 'done');
+  const payload = JSON.stringify({
+    tracker: 'Priority',
+    trackerUrl: TRACKER_URL,
+    items: activeTasks.map(t => ({
+      id:            String(t.id),
+      title:         t.title,
+      dueDate:       t.date,
+      status:        t.status,
+      priorityOrType: t.priority,
+      category:      t.category || '',
+      note:          t.note || ''
+    }))
+  });
+  fetch(SHEET_WEBHOOK_URL, {
+    method:  'POST',
+    mode:    'no-cors',
+    headers: { 'Content-Type': 'text/plain' },
+    body:    payload
+  }).catch(err => console.warn('📊 Sheet sync error (Priority):', err));
+}
+
 // ── Constants ─────────────────────────────────────────────────────────
 const TODAY = new Date();
 TODAY.setHours(0, 0, 0, 0);
@@ -471,43 +500,28 @@ const CAT_LABELS = {
   finance: 'Finance', family: 'Family', home: 'Home', other: 'Other'
 };
 
-// ── State ─────────────────────────────────────────────────────────────
-let tasks         = [];
-let deleted       = [];
-let editIndex     = -1;
-let currentFilter = 'all';
-let currentUser   = null;
-let unsubSnap     = null;
+let tasks = [], deleted = [], editIndex = -1, currentFilter = 'all', currentUser = null, unsubSnap = null;
 
-// ── Helpers ───────────────────────────────────────────────────────────
 function todayStr() { return new Date().toISOString().split('T')[0]; }
-
 function fmt(dateStr) {
   if (!dateStr) return '—';
   return new Date(dateStr).toLocaleDateString('hi-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 }
-
 function daysUntil(dateStr) {
   if (!dateStr) return 999;
-  const d = new Date(dateStr);
-  d.setHours(0, 0, 0, 0);
+  const d = new Date(dateStr); d.setHours(0,0,0,0);
   return Math.round((d - TODAY) / 86400000);
 }
-
 function calcNextDue(frequency) {
   if (!frequency || frequency === 'once') return '';
-  const next = new Date();
-  next.setDate(next.getDate() + (FREQ_DAYS[frequency] || 7));
+  const next = new Date(); next.setDate(next.getDate() + (FREQ_DAYS[frequency] || 7));
   return next.toISOString().split('T')[0];
 }
-
-function isOverdue(task) {
-  return task.status !== 'done' && daysUntil(task.date) < 0;
-}
+function isOverdue(task) { return task.status !== 'done' && daysUntil(task.date) < 0; }
 
 function getDefaultTasks() {
   return [
-    { id: 1, title: 'Bank statement लेनी है', priority: 'high', category: 'finance', date: todayStr(), time: '11:00', frequency: 'monthly', nextDue: '', status: 'pending', note: 'SBI branch जाना है। Passbook update भी करवानी है।' },
+    { id: 1, title: 'Bank statement लेनी है', priority: 'high', category: 'finance', date: todayStr(), time: '11:00', frequency: 'monthly', nextDue: '', status: 'pending', note: 'SBI branch जाना है।' },
     { id: 2, title: 'Doctor appointment — check-up', priority: 'high', category: 'health', date: todayStr(), time: '10:00', frequency: 'monthly', nextDue: '', status: 'pending', note: 'BP और sugar test करवाना है।' },
     { id: 3, title: 'Office report submit करना', priority: 'medium', category: 'work', date: todayStr(), time: '14:00', frequency: 'weekly', nextDue: '', status: 'pending', note: 'Monthly progress report।' },
     { id: 4, title: 'बिजली का बिल जमा करना', priority: 'medium', category: 'home', date: todayStr(), time: '', frequency: 'monthly', nextDue: '', status: 'pending', note: '' },
@@ -515,41 +529,25 @@ function getDefaultTasks() {
   ];
 }
 
-// ── Persistence ───────────────────────────────────────────────────────
-function getRef() {
-  return db.collection('users').doc(currentUser.uid).collection('data').doc('tasks');
-}
+function getRef() { return db.collection('users').doc(currentUser.uid).collection('data').doc('tasks'); }
 
 function save() {
-    if (currentUser) {
-          // Private save (existing)
-          getRef().set({ items: tasks, deleted: deleted }).catch(e => console.error('Save error:', e));
-
-          // Public summary for Claude
-          db.collection('public').doc('tasks')
-            .set({
-                      items: tasks.map(t => ({
-                                  id: t.id, title: t.title, priority: t.priority,
-                                  category: t.category, date: t.date, time: t.time,
-                                  frequency: t.frequency, nextDue: t.nextDue,
-                                  status: t.status, note: t.note
-                      })),
-                      updatedAt: new Date().toISOString()
-            }).catch(e => console.error('Public tasks save error:', e));
-    } else {
-          localStorage.setItem('tafhim-priorities', JSON.stringify(tasks));
-          localStorage.setItem('tafhim-priorities-deleted', JSON.stringify(deleted));
-    }
+  if (currentUser) {
+    getRef().set({ items: tasks, deleted: deleted }).then(() => pushToSheet()).catch(e => console.error('Save error:', e));
+  } else {
+    localStorage.setItem('tafhim-priorities', JSON.stringify(tasks));
+    localStorage.setItem('tafhim-priorities-deleted', JSON.stringify(deleted));
+    pushToSheet();
+  }
 }
+
 function startSync() {
   if (unsubSnap) unsubSnap();
   unsubSnap = getRef().onSnapshot(snap => {
-    if (snap.exists) {
-      tasks   = snap.data().items || [];
-      deleted = snap.data().deleted || [];
-    } else {
+    if (snap.exists) { tasks = snap.data().items || []; deleted = snap.data().deleted || []; }
+    else {
       const local = JSON.parse(localStorage.getItem('tafhim-priorities') || '[]');
-      tasks   = local.length > 0 ? local : getDefaultTasks();
+      tasks = local.length > 0 ? local : getDefaultTasks();
       deleted = JSON.parse(localStorage.getItem('tafhim-priorities-deleted') || '[]');
       save();
     }
@@ -557,15 +555,9 @@ function startSync() {
   }, err => console.error('Sync error:', err));
 }
 
-// ── Auth ──────────────────────────────────────────────────────────────
 function handleAuth() {
-  if (currentUser) {
-    if (unsubSnap) unsubSnap();
-    auth.signOut();
-  } else {
-    auth.signInWithPopup(new firebase.auth.GoogleAuthProvider())
-      .catch(e => alert('Sign-in failed: ' + e.message));
-  }
+  if (currentUser) { if (unsubSnap) unsubSnap(); auth.signOut(); }
+  else { auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(e => alert('Sign-in failed: ' + e.message)); }
 }
 
 auth.onAuthStateChanged(user => {
@@ -579,284 +571,83 @@ auth.onAuthStateChanged(user => {
     currentUser = null;
     bar.className = 'auth-bar signed-out';
     bar.innerHTML = `<span class="auth-left">☁️ Sign in to sync across all devices</span><button class="auth-btn" onclick="handleAuth()">Google से Sign In</button>`;
-    tasks   = JSON.parse(localStorage.getItem('tafhim-priorities') || '[]');
+    tasks = JSON.parse(localStorage.getItem('tafhim-priorities') || '[]');
     deleted = JSON.parse(localStorage.getItem('tafhim-priorities-deleted') || '[]');
     if (tasks.length === 0) { tasks = getDefaultTasks(); localStorage.setItem('tafhim-priorities', JSON.stringify(tasks)); }
     render();
   }
 });
 
-// ── Render ────────────────────────────────────────────────────────────
 function render() {
   const list = document.getElementById('tasksList');
-  const q    = document.getElementById('searchInput').value.toLowerCase();
-
-  // Update trash button count
+  const q = document.getElementById('searchInput').value.toLowerCase();
   const trashBtn = document.getElementById('trash-btn');
   if (trashBtn) trashBtn.textContent = deleted.length > 0 ? `🗑️ Trash (${deleted.length})` : '🗑️ Trash';
 
-  // Trash view
   if (currentFilter === 'trash') {
-    let hi = 0, med = 0, lo = 0;
-    tasks.forEach(t => { if (t.status !== 'done') { if (t.priority === 'high') hi++; else if (t.priority === 'medium') med++; else lo++; } });
-    document.getElementById('stat-high').textContent   = hi;
-    document.getElementById('stat-medium').textContent = med;
-    document.getElementById('stat-low').textContent    = lo;
-    document.getElementById('stat-total').textContent  = tasks.filter(t => t.status !== 'done').length;
-    if (deleted.length === 0) {
-      list.innerHTML = '<div class="empty-state">🗑️ Trash खाली है।</div>';
-      return;
-    }
-    list.innerHTML = deleted.map((t, i) => `
-      <div class="trash-card">
-        <div class="card-top">
-          <div class="task-title" style="text-decoration:line-through;color:var(--muted)">${t.title}</div>
-          <span class="badge" style="background:#222;color:#666;border:1px solid #444">🗑️ DELETED</span>
-        </div>
-        <div class="card-meta">
-          <div class="meta-item">🕐 Deleted: <span>${t.deletedAt ? fmt(t.deletedAt.split('T')[0]) : '—'}</span></div>
-          <div class="meta-item">🏷️ <span>${CAT_LABELS[t.category] || t.category}</span></div>
-        </div>
-        <div class="card-actions">
-          <button class="action-btn restore-btn" onclick="restoreTask(${i})">↩️ Restore</button>
-          <button class="action-btn perm-del-btn" onclick="permanentDeleteTask(${i})">🗑️ हमेशा के लिए Delete</button>
-        </div>
-      </div>`).join('');
+    let hi=0,med=0,lo=0;
+    tasks.forEach(t => { if(t.status!=='done'){if(t.priority==='high')hi++;else if(t.priority==='medium')med++;else lo++;} });
+    document.getElementById('stat-high').textContent=hi; document.getElementById('stat-medium').textContent=med;
+    document.getElementById('stat-low').textContent=lo; document.getElementById('stat-total').textContent=tasks.filter(t=>t.status!=='done').length;
+    if (deleted.length===0){list.innerHTML='<div class="empty-state">🗑️ Trash खाली है।</div>';return;}
+    list.innerHTML=deleted.map((t,i)=>`<div class="trash-card"><div class="card-top"><div class="task-title" style="text-decoration:line-through;color:var(--muted)">${t.title}</div><span class="badge" style="background:#222;color:#666;border:1px solid #444">🗑️ DELETED</span></div><div class="card-meta"><div class="meta-item">🕐 Deleted: <span>${t.deletedAt?fmt(t.deletedAt.split('T')[0]):'—'}</span></div><div class="meta-item">🏷️ <span>${CAT_LABELS[t.category]||t.category}</span></div></div><div class="card-actions"><button class="action-btn restore-btn" onclick="restoreTask(${i})">↩️ Restore</button><button class="action-btn perm-del-btn" onclick="permanentDeleteTask(${i})">🗑️ हमेशा के लिए Delete</button></div></div>`).join('');
     return;
   }
 
-  let filtered = tasks.filter(t => {
-    const matchSearch = !q || t.title.toLowerCase().includes(q) || (t.note || '').toLowerCase().includes(q);
-    if (!matchSearch) return false;
-    if (currentFilter === 'all')       return t.status !== 'done';
-    if (currentFilter === 'high')      return t.priority === 'high' && t.status !== 'done';
-    if (currentFilter === 'today')     return t.date === todayStr() && t.status !== 'done';
-    if (currentFilter === 'pending')   return t.status === 'pending';
-    if (currentFilter === 'postponed') return t.status === 'postponed';
-    if (currentFilter === 'done')      return t.status === 'done';
-    if (currentFilter === 'overdue')   return isOverdue(t);
+  let filtered=tasks.filter(t=>{
+    const ms=!q||t.title.toLowerCase().includes(q)||(t.note||'').toLowerCase().includes(q);
+    if(!ms)return false;
+    if(currentFilter==='all')return t.status!=='done';
+    if(currentFilter==='high')return t.priority==='high'&&t.status!=='done';
+    if(currentFilter==='today')return t.date===todayStr()&&t.status!=='done';
+    if(currentFilter==='pending')return t.status==='pending';
+    if(currentFilter==='postponed')return t.status==='postponed';
+    if(currentFilter==='done')return t.status==='done';
+    if(currentFilter==='overdue')return isOverdue(t);
     return true;
   });
 
-  filtered.sort((a, b) => {
-    if (a.status === 'done' && b.status !== 'done') return 1;
-    if (b.status === 'done' && a.status !== 'done') return -1;
-    const pri = { high: 0, medium: 1, low: 2 };
-    if (pri[a.priority] !== pri[b.priority]) return pri[a.priority] - pri[b.priority];
-    return daysUntil(a.date) - daysUntil(b.date);
+  filtered.sort((a,b)=>{
+    if(a.status==='done'&&b.status!=='done')return 1;
+    if(b.status==='done'&&a.status!=='done')return -1;
+    const pri={high:0,medium:1,low:2};
+    if(pri[a.priority]!==pri[b.priority])return pri[a.priority]-pri[b.priority];
+    return daysUntil(a.date)-daysUntil(b.date);
   });
 
-  let hi = 0, med = 0, lo = 0;
-  tasks.forEach(t => {
-    if (t.status !== 'done') {
-      if (t.priority === 'high') hi++;
-      else if (t.priority === 'medium') med++;
-      else lo++;
-    }
-  });
-  document.getElementById('stat-high').textContent   = hi;
-  document.getElementById('stat-medium').textContent = med;
-  document.getElementById('stat-low').textContent    = lo;
-  document.getElementById('stat-total').textContent  = tasks.filter(t => t.status !== 'done').length;
+  let hi=0,med=0,lo=0;
+  tasks.forEach(t=>{if(t.status!=='done'){if(t.priority==='high')hi++;else if(t.priority==='medium')med++;else lo++;}});
+  document.getElementById('stat-high').textContent=hi; document.getElementById('stat-medium').textContent=med;
+  document.getElementById('stat-low').textContent=lo; document.getElementById('stat-total').textContent=tasks.filter(t=>t.status!=='done').length;
 
-  if (filtered.length === 0) {
-    list.innerHTML = '<div class="empty-state">इस category में कोई काम नहीं है।</div>';
-    return;
-  }
+  if(filtered.length===0){list.innerHTML='<div class="empty-state">इस category में कोई काम नहीं है।</div>';return;}
 
-  list.innerHTML = filtered.map(t => {
-    const realIndex = tasks.indexOf(t);
-    const overdue   = isOverdue(t);
-    const days      = daysUntil(t.date);
-
-    let dayLabel = '';
-    if (t.status !== 'done') {
-      if (days < 0)      dayLabel = `${Math.abs(days)}d OVERDUE`;
-      else if (days === 0) dayLabel = 'आज';
-      else if (days === 1) dayLabel = 'कल';
-      else                 dayLabel = `${days}d बाद`;
-    }
-
-    const statusBadge = t.status === 'done' ? 'done'
-      : t.status === 'postponed' ? 'postponed'
-      : overdue ? 'overdue' : 'pending';
-
-    const statusLabel = t.status === 'done' ? '✅ Done'
-      : t.status === 'postponed' ? '📅 Postponed'
-      : overdue ? `⚠️ ${dayLabel}` : `⏳ ${dayLabel}`;
-
-    const cardClass     = t.status === 'done' ? `${t.priority} done-card` : t.priority;
-    const showNextDue   = t.nextDue && t.status !== 'done' && t.frequency !== 'once';
-
-    return `
-    <div class="task-card ${cardClass}">
-      <div class="card-top">
-        <div class="task-title ${t.status === 'done' ? 'strikethrough' : ''}">${t.title}</div>
-        <div class="badges">
-          <span class="badge ${t.priority}">${t.priority.toUpperCase()}</span>
-          <span class="badge ${statusBadge}">${statusLabel}</span>
-        </div>
-      </div>
-      <div class="card-meta">
-        <div class="meta-item">📅 Due: <span class="${overdue && t.status !== 'done' ? 'overdue-text' : ''}">${fmt(t.date)}${t.time ? ' ' + t.time : ''}</span></div>
-        <div class="meta-item">🔄 <span>${FREQ_LABELS[t.frequency] || t.frequency}</span></div>
-        ${showNextDue ? `<div class="meta-item">⏭️ Next: <span class="nextdue-text">${fmt(t.nextDue)}</span></div>` : ''}
-        <div class="meta-item">🏷️ <span>${CAT_LABELS[t.category] || t.category}</span></div>
-      </div>
-      ${t.note ? `<div class="card-note">💬 ${t.note}</div>` : ''}
-      <div class="card-actions">
-        ${t.status !== 'done'
-          ? `<button class="action-btn done-btn" onclick="markDone(${realIndex})">✅ Done</button>`
-          : `<button class="action-btn" onclick="markStatus(${realIndex},'pending')">↩️ Reopen</button>`}
-        ${t.status === 'pending' ? `<button class="action-btn postpone-btn" onclick="postponeTask(${realIndex})">📅 Postpone</button>` : ''}
-        <button class="action-btn" onclick="editTask(${realIndex})">✏️ Edit</button>
-        <button class="action-btn" onclick="deleteTask(${realIndex})">🗑️</button>
-      </div>
-    </div>`;
+  list.innerHTML=filtered.map(t=>{
+    const ri=tasks.indexOf(t),overdue=isOverdue(t),days=daysUntil(t.date);
+    let dl='';
+    if(t.status!=='done'){if(days<0)dl=`${Math.abs(days)}d OVERDUE`;else if(days===0)dl='आज';else if(days===1)dl='कल';else dl=`${days}d बाद`;}
+    const sb=t.status==='done'?'done':t.status==='postponed'?'postponed':overdue?'overdue':'pending';
+    const sl=t.status==='done'?'✅ Done':t.status==='postponed'?'📅 Postponed':overdue?`⚠️ ${dl}`:`⏳ ${dl}`;
+    const cc=t.status==='done'?`${t.priority} done-card`:t.priority;
+    const snd=t.nextDue&&t.status!=='done'&&t.frequency!=='once';
+    return `<div class="task-card ${cc}"><div class="card-top"><div class="task-title ${t.status==='done'?'strikethrough':''}">${t.title}</div><div class="badges"><span class="badge ${t.priority}">${t.priority.toUpperCase()}</span><span class="badge ${sb}">${sl}</span></div></div><div class="card-meta"><div class="meta-item">📅 Due: <span class="${overdue&&t.status!=='done'?'overdue-text':''}">${fmt(t.date)}${t.time?' '+t.time:''}</span></div><div class="meta-item">🔄 <span>${FREQ_LABELS[t.frequency]||t.frequency}</span></div>${snd?`<div class="meta-item">⏭️ Next: <span class="nextdue-text">${fmt(t.nextDue)}</span></div>`:''}<div class="meta-item">🏷️ <span>${CAT_LABELS[t.category]||t.category}</span></div></div>${t.note?`<div class="card-note">💬 ${t.note}</div>`:''}<div class="card-actions">${t.status!=='done'?`<button class="action-btn done-btn" onclick="markDone(${ri})">✅ Done</button>`:`<button class="action-btn" onclick="markStatus(${ri},'pending')">↩️ Reopen</button>`}${t.status==='pending'?`<button class="action-btn postpone-btn" onclick="postponeTask(${ri})">📅 Postpone</button>`:''}<button class="action-btn" onclick="editTask(${ri})">✏️ Edit</button><button class="action-btn" onclick="deleteTask(${ri})">🗑️</button></div></div>`;
   }).join('');
 }
 
-// ── Actions ───────────────────────────────────────────────────────────
-function setFilter(type, btn) {
-  currentFilter = type;
-  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  render();
-}
-
-function markDone(index) {
-  const t    = tasks[index];
-  const freq = t.frequency;
-  t.status   = 'done';
-  t.doneAt   = new Date().toISOString();
-  if (freq && freq !== 'once') {
-    const next = new Date();
-    next.setDate(next.getDate() + (FREQ_DAYS[freq] || 7));
-    t.nextDue = next.toISOString().split('T')[0];
-    save();
-    render();
-    alert(`✅ Done!\nअगली बार: ${fmt(t.nextDue)}\n(Edit करके date update कर सकते हैं)`);
-  } else {
-    save();
-    render();
-  }
-}
-
-function markStatus(index, status) {
-  tasks[index].status = status;
-  save();
-  render();
-}
-
-function postponeTask(index) {
-  const t       = tasks[index];
-  const newDate = prompt('नई तारीख डालें (YYYY-MM-DD):', t.date);
-  if (!newDate) return;
-  t.date   = newDate;
-  t.status = 'postponed';
-  save();
-  render();
-}
-
-// ── Modal ─────────────────────────────────────────────────────────────
-function openAddModal() {
-  editIndex = -1;
-  document.getElementById('modalTitle').textContent    = 'नया काम जोड़ें';
-  document.getElementById('f-title').value             = '';
-  document.getElementById('f-priority').value          = 'medium';
-  document.getElementById('f-category').value          = 'personal';
-  document.getElementById('f-date').value              = todayStr();
-  document.getElementById('f-time').value              = '';
-  document.getElementById('f-frequency').value         = 'once';
-  document.getElementById('f-nextdue').value           = '';
-  document.getElementById('f-status').value            = 'pending';
-  document.getElementById('f-note').value              = '';
-  document.getElementById('modalOverlay').classList.add('active');
-}
-
-function editTask(index) {
-  editIndex = index;
-  const t = tasks[index];
-  document.getElementById('modalTitle').textContent    = 'काम Edit करें';
-  document.getElementById('f-title').value             = t.title;
-  document.getElementById('f-priority').value          = t.priority;
-  document.getElementById('f-category').value          = t.category;
-  document.getElementById('f-date').value              = t.date || '';
-  document.getElementById('f-time').value              = t.time || '';
-  document.getElementById('f-frequency').value         = t.frequency || 'once';
-  document.getElementById('f-nextdue').value           = t.nextDue || '';
-  document.getElementById('f-status').value            = t.status;
-  document.getElementById('f-note').value              = t.note || '';
-  document.getElementById('modalOverlay').classList.add('active');
-}
-
-function closeModal() {
-  document.getElementById('modalOverlay').classList.remove('active');
-}
-
-document.getElementById('f-frequency').addEventListener('change', function() {
-  if (this.value !== 'once' && !document.getElementById('f-nextdue').value) {
-    document.getElementById('f-nextdue').value = calcNextDue(this.value);
-  }
-});
-
-function saveTask() {
-  const title = document.getElementById('f-title').value.trim();
-  if (!title) { alert('काम का नाम जरूरी है!'); return; }
-  const date = document.getElementById('f-date').value;
-  if (!date)  { alert('तारीख जरूरी है!'); return; }
-
-  const task = {
-    id:        editIndex >= 0 ? tasks[editIndex].id : Date.now(),
-    title,
-    priority:  document.getElementById('f-priority').value,
-    category:  document.getElementById('f-category').value,
-    date,
-    time:      document.getElementById('f-time').value,
-    frequency: document.getElementById('f-frequency').value,
-    nextDue:   document.getElementById('f-nextdue').value,
-    status:    document.getElementById('f-status').value,
-    note:      document.getElementById('f-note').value.trim()
-  };
-
-  if (editIndex >= 0) tasks[editIndex] = task;
-  else tasks.push(task);
-
-  save();
-  closeModal();
-  render();
-}
-
-function deleteTask(index) {
-  if (!confirm(`"${tasks[index].title}" Trash में भेजें?\n\nTrash से वापस restore हो सकता है।`)) return;
-  const item = tasks.splice(index, 1)[0];
-  item.deletedAt = new Date().toISOString();
-  deleted.push(item);
-  save();
-  render();
-}
-
-function restoreTask(index) {
-  const item = deleted.splice(index, 1)[0];
-  delete item.deletedAt;
-  tasks.push(item);
-  save();
-  render();
-}
-
-function permanentDeleteTask(index) {
-  if (!confirm('हमेशा के लिए delete करें? यह वापस नहीं आएगा।')) return;
-  deleted.splice(index, 1);
-  save();
-  render();
-}
-
-document.getElementById('modalOverlay').addEventListener('click', function(e) {
-  if (e.target === this) closeModal();
-});
-
-document.getElementById('dateDisplay').textContent =
-  new Date().toLocaleDateString('hi-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+function setFilter(type,btn){currentFilter=type;document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');render();}
+function markDone(index){const t=tasks[index],freq=t.frequency;t.status='done';t.doneAt=new Date().toISOString();if(freq&&freq!=='once'){const next=new Date();next.setDate(next.getDate()+(FREQ_DAYS[freq]||7));t.nextDue=next.toISOString().split('T')[0];save();render();alert(`✅ Done!\nअगली बार: ${fmt(t.nextDue)}`);}else{save();render();}}
+function markStatus(index,status){tasks[index].status=status;save();render();}
+function postponeTask(index){const t=tasks[index],nd=prompt('नई तारीख डालें (YYYY-MM-DD):',t.date);if(!nd)return;t.date=nd;t.status='postponed';save();render();}
+function openAddModal(){editIndex=-1;document.getElementById('modalTitle').textContent='नया काम जोड़ें';document.getElementById('f-title').value='';document.getElementById('f-priority').value='medium';document.getElementById('f-category').value='personal';document.getElementById('f-date').value=todayStr();document.getElementById('f-time').value='';document.getElementById('f-frequency').value='once';document.getElementById('f-nextdue').value='';document.getElementById('f-status').value='pending';document.getElementById('f-note').value='';document.getElementById('modalOverlay').classList.add('active');}
+function editTask(index){editIndex=index;const t=tasks[index];document.getElementById('modalTitle').textContent='काम Edit करें';document.getElementById('f-title').value=t.title;document.getElementById('f-priority').value=t.priority;document.getElementById('f-category').value=t.category;document.getElementById('f-date').value=t.date||'';document.getElementById('f-time').value=t.time||'';document.getElementById('f-frequency').value=t.frequency||'once';document.getElementById('f-nextdue').value=t.nextDue||'';document.getElementById('f-status').value=t.status;document.getElementById('f-note').value=t.note||'';document.getElementById('modalOverlay').classList.add('active');}
+function closeModal(){document.getElementById('modalOverlay').classList.remove('active');}
+document.getElementById('f-frequency').addEventListener('change',function(){if(this.value!=='once'&&!document.getElementById('f-nextdue').value)document.getElementById('f-nextdue').value=calcNextDue(this.value);});
+function saveTask(){const title=document.getElementById('f-title').value.trim();if(!title){alert('काम का नाम जरूरी है!');return;}const date=document.getElementById('f-date').value;if(!date){alert('तारीख जरूरी है!');return;}const task={id:editIndex>=0?tasks[editIndex].id:Date.now(),title,priority:document.getElementById('f-priority').value,category:document.getElementById('f-category').value,date,time:document.getElementById('f-time').value,frequency:document.getElementById('f-frequency').value,nextDue:document.getElementById('f-nextdue').value,status:document.getElementById('f-status').value,note:document.getElementById('f-note').value.trim()};if(editIndex>=0)tasks[editIndex]=task;else tasks.push(task);save();closeModal();render();}
+function deleteTask(index){if(!confirm(`"${tasks[index].title}" Trash में भेजें?`))return;const item=tasks.splice(index,1)[0];item.deletedAt=new Date().toISOString();deleted.push(item);save();render();}
+function restoreTask(index){const item=deleted.splice(index,1)[0];delete item.deletedAt;tasks.push(item);save();render();}
+function permanentDeleteTask(index){if(!confirm('हमेशा के लिए delete करें?'))return;deleted.splice(index,1);save();render();}
+document.getElementById('modalOverlay').addEventListener('click',function(e){if(e.target===this)closeModal();});
+document.getElementById('dateDisplay').textContent=new Date().toLocaleDateString('hi-IN',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
 </script>
 </body>
 </html>
