@@ -8,7 +8,7 @@
   @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
 
   :root {
-    --bg: #0f0f0f;h
+    --bg: #0f0f0f;
     --surface: #1a1a1a;
     --surface2: #222;
     --border: #2a2a2a;
@@ -33,24 +33,9 @@
     padding: 16px;
   }
 
-  header {
-    border-bottom: 2px solid var(--accent);
-    padding-bottom: 12px;
-    margin-bottom: 20px;
-  }
-
-  header h1 {
-    font-size: 1.4rem;
-    color: var(--accent);h
-    letter-spacing: 1px;
-  }
-
-  header p {
-    font-size: 0.75rem;
-    color: var(--muted);
-    font-family: 'JetBrains Mono', monospace;
-    margin-top: 4px;
-  }
+  header { border-bottom: 2px solid var(--accent); padding-bottom: 12px; margin-bottom: 20px; }
+  header h1 { font-size: 1.4rem; color: var(--accent); letter-spacing: 1px; }
+  header p { font-size: 0.75rem; color: var(--muted); font-family: 'JetBrains Mono', monospace; margin-top: 4px; }
 
   .stats {
     display: grid;
@@ -59,37 +44,15 @@
     margin-bottom: 20px;
   }
 
-  .stat-box {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 10px;
-    text-align: center;
-  }
-
-  .stat-box .num {
-    font-size: 1.6rem;
-    font-weight: 700;
-    font-family: 'JetBrains Mono', monospace;
-  }
-
-  .stat-box .label {
-    font-size: 0.65rem;
-    color: var(--muted);
-    margin-top: 2px;
-  }
-
+  .stat-box { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 10px; text-align: center; }
+  .stat-box .num { font-size: 1.6rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+  .stat-box .label { font-size: 0.65rem; color: var(--muted); margin-top: 2px; }
   .stat-box.urgent .num { color: var(--urgent); }
   .stat-box.warning .num { color: var(--warning); }
   .stat-box.ok .num { color: var(--ok); }
   .stat-box.total .num { color: var(--accent); }
 
-  .controls {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 16px;
-    flex-wrap: wrap;
-  }
+  .controls { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
 
   .filter-btn {
     background: var(--surface);
@@ -102,12 +65,7 @@
     font-family: 'Noto Sans Devanagari', sans-serif;
     transition: all 0.2s;
   }
-
-  .filter-btn.active, .filter-btn:hover {
-    background: var(--accent);
-    color: #000;
-    border-color: var(--accent);
-  }
+  .filter-btn.active, .filter-btn:hover { background: var(--accent); color: #000; border-color: var(--accent); }
 
   .add-btn {
     margin-left: auto;
@@ -131,26 +89,14 @@
     margin-bottom: 10px;
     transition: all 0.2s;
   }
-
   .story-card.urgent { border-left-color: var(--urgent); }
   .story-card.warning { border-left-color: var(--warning); }
   .story-card.ok { border-left-color: var(--ok); }
   .story-card.deadline { border-left-color: var(--blue); }
   .story-card.series { border-left-color: #9b59b6; }
 
-  .card-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 8px;
-  }
-
-  .story-title {
-    font-size: 0.9rem;
-    font-weight: 600;
-    line-height: 1.4;
-    flex: 1;
-  }
+  .card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+  .story-title { font-size: 0.9rem; font-weight: 600; line-height: 1.4; flex: 1; }
 
   .badge {
     font-size: 0.6rem;
@@ -160,45 +106,19 @@
     white-space: nowrap;
     font-weight: 600;
   }
-
   .badge.urgent { background: #3d0000; color: var(--urgent); border: 1px solid var(--urgent); }
   .badge.warning { background: #2d1f00; color: var(--warning); border: 1px solid var(--warning); }
   .badge.ok { background: #002d10; color: var(--ok); border: 1px solid var(--ok); }
   .badge.deadline { background: #001f3d; color: #5dade2; border: 1px solid #2980b9; }
   .badge.series { background: #1e0033; color: #bb8fce; border: 1px solid #9b59b6; }
 
-  .card-meta {
-    display: flex;
-    gap: 12px;
-    margin-top: 8px;
-    flex-wrap: wrap;
-  }
+  .card-meta { display: flex; gap: 12px; margin-top: 8px; flex-wrap: wrap; }
+  .meta-item { font-size: 0.68rem; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+  .meta-item span { color: var(--text); font-weight: 600; }
 
-  .meta-item {
-    font-size: 0.68rem;
-    color: var(--muted);
-    font-family: 'JetBrains Mono', monospace;
-  }
+  .card-note { font-size: 0.75rem; color: #aaa; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); line-height: 1.5; }
 
-  .meta-item span {
-    color: var(--text);
-    font-weight: 600;
-  }
-
-  .card-note {
-    font-size: 0.75rem;
-    color: #aaa;
-    margin-top: 8px;
-    padding-top: 8px;
-    border-top: 1px solid var(--border);
-    line-height: 1.5;
-  }
-
-  .card-actions {
-    display: flex;
-    gap: 6px;
-    margin-top: 10px;
-  }
+  .card-actions { display: flex; gap: 6px; margin-top: 10px; }
 
   .action-btn {
     font-size: 0.65rem;
@@ -211,7 +131,6 @@
     font-family: 'Noto Sans Devanagari', sans-serif;
     transition: all 0.15s;
   }
-
   .action-btn:hover { background: var(--accent); color: #000; border-color: var(--accent); }
   .action-btn.done { border-color: var(--ok); color: var(--ok); }
   .action-btn.done:hover { background: var(--ok); color: #000; }
@@ -225,7 +144,6 @@
     padding: 20px;
     overflow-y: auto;
   }
-
   .modal-overlay.active { display: flex; align-items: flex-start; justify-content: center; }
 
   .modal {
@@ -237,24 +155,10 @@
     max-width: 480px;
     margin-top: 40px;
   }
+  .modal h3 { color: var(--accent); margin-bottom: 16px; font-size: 1rem; }
 
-  .modal h3 {
-    color: var(--accent);
-    margin-bottom: 16px;
-    font-size: 1rem;
-  }
-
-  .form-group {
-    margin-bottom: 12px;
-  }
-
-  .form-group label {
-    display: block;
-    font-size: 0.72rem;
-    color: var(--muted);
-    margin-bottom: 4px;
-  }
-
+  .form-group { margin-bottom: 12px; }
+  .form-group label { display: block; font-size: 0.72rem; color: var(--muted); margin-bottom: 4px; }
   .form-group input, .form-group select, .form-group textarea {
     width: 100%;
     background: var(--bg);
@@ -265,15 +169,9 @@
     font-size: 0.8rem;
     font-family: 'Noto Sans Devanagari', sans-serif;
   }
-
   .form-group textarea { resize: vertical; min-height: 60px; }
 
-  .modal-btns {
-    display: flex;
-    gap: 8px;
-    margin-top: 16px;
-  }
-
+  .modal-btns { display: flex; gap: 8px; margin-top: 16px; }
   .modal-btns button {
     flex: 1;
     padding: 8px;
@@ -284,32 +182,10 @@
     font-family: 'Noto Sans Devanagari', sans-serif;
     font-weight: 600;
   }
-
   .btn-save { background: var(--accent); color: #000; }
   .btn-cancel { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
 
-  .section-label {
-    font-size: 0.7rem;
-    color: var(--accent);
-    font-family: 'JetBrains Mono', monospace;
-    letter-spacing: 2px;
-    margin-bottom: 8px;
-    margin-top: 4px;
-  }
-
-  .empty-state {
-    text-align: center;
-    color: var(--muted);
-    padding: 40px 20px;
-    font-size: 0.85rem;
-  }
-
-  .today-date {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
-    color: var(--accent);
-    margin-bottom: 4px;
-  }
+  .empty-state { text-align: center; color: var(--muted); padding: 40px 20px; font-size: 0.85rem; }
 
   .auth-bar {
     display: flex;
@@ -330,15 +206,7 @@
   .signout-btn { background: transparent; color: var(--muted); border: 1px solid var(--border); padding: 4px 8px; border-radius: 3px; font-size: 0.65rem; cursor: pointer; font-family: 'JetBrains Mono', monospace; white-space: nowrap; }
   .signout-btn:hover { color: var(--urgent); border-color: var(--urgent); }
 
-  .trash-card {
-    background: var(--surface);
-    border: 1px solid #333;
-    border-left: 4px solid #444;
-    border-radius: 6px;
-    padding: 12px;
-    margin-bottom: 10px;
-    opacity: 0.75;
-  }
+  .trash-card { background: var(--surface); border: 1px solid #333; border-left: 4px solid #444; border-radius: 6px; padding: 12px; margin-bottom: 10px; opacity: 0.75; }
   .restore-btn { border-color: var(--ok) !important; color: var(--ok) !important; }
   .restore-btn:hover { background: var(--ok) !important; color: #000 !important; }
   .perm-del-btn { border-color: var(--urgent) !important; color: var(--urgent) !important; }
@@ -450,6 +318,33 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
+// ── SHEET SYNC CONFIG ─────────────────────────────────────────────────
+const SHEET_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbxXsCpyTu2i1eZ9Cru92Ok0mQFmgiAN-uI5IAOI0a0VW9JD6zsIOpJk5K-J1gDAEs08/exec';
+const TRACKER_URL = 'https://jagranfkbd-lgtm.github.io/tafhim-assistant/story-tracker.html';
+
+function pushToSheet() {
+  if (!SHEET_WEBHOOK_URL) return;
+  const payload = JSON.stringify({
+    tracker: 'Story',
+    trackerUrl: TRACKER_URL,
+    items: stories.map(s => ({
+      id:             String(s.id),
+      title:          s.title,
+      dueDate:        s.nextDate,
+      status:         'pending',
+      priorityOrType: s.type,
+      category:       s.category || '',
+      note:           s.note || ''
+    }))
+  });
+  fetch(SHEET_WEBHOOK_URL, {
+    method:  'POST',
+    mode:    'no-cors',
+    headers: { 'Content-Type': 'text/plain' },
+    body:    payload
+  }).catch(err => console.warn('📊 Sheet sync error (Story):', err));
+}
+
 // ── State ────────────────────────────────────────────────────────────
 const TODAY = new Date();
 TODAY.setHours(0,0,0,0);
@@ -514,13 +409,11 @@ function filterStories(type, btn) {
 function markDone(index) {
   const s = stories[index];
   s.lastDate = new Date().toISOString().split('T')[0];
-
   const freqDays = { daily: 1, '3days': 3, weekly: 7, '10days': 10, asneeded: 7 };
   const days = freqDays[s.frequency] || 7;
   const next = new Date();
   next.setDate(next.getDate() + days);
   s.nextDate = next.toISOString().split('T')[0];
-
   save();
   render();
   alert(`✅ "${s.title}" — खबर mark हो गई!\nअगली follow-up: ${fmt(s.nextDate)}`);
@@ -560,34 +453,27 @@ function closeModal() {
 function saveStory() {
   const title = document.getElementById('f-title').value.trim();
   if (!title) { alert('Story का विषय जरूरी है!'); return; }
-
   const nextDate = document.getElementById('f-nextDate').value;
   if (!nextDate) { alert('अगली खबर की तारीख जरूरी है!'); return; }
-
   const story = {
-    id: editIndex >= 0 ? stories[editIndex].id : Date.now(),
+    id:        editIndex >= 0 ? stories[editIndex].id : Date.now(),
     title,
-    category: document.getElementById('f-category').value,
-    type: document.getElementById('f-type').value,
-    lastDate: document.getElementById('f-lastDate').value,
+    category:  document.getElementById('f-category').value,
+    type:      document.getElementById('f-type').value,
+    lastDate:  document.getElementById('f-lastDate').value,
     nextDate,
     frequency: document.getElementById('f-frequency').value,
-    note: document.getElementById('f-note').value.trim()
+    note:      document.getElementById('f-note').value.trim()
   };
-
-  if (editIndex >= 0) {
-    stories[editIndex] = story;
-  } else {
-    stories.push(story);
-  }
-
+  if (editIndex >= 0) stories[editIndex] = story;
+  else stories.push(story);
   save();
   closeModal();
   render();
 }
 
 function deleteStory(index) {
-  if (!confirm(`"${stories[index].title}" Trash में भेजें?\n\nTrash से वापस restore हो सकती है।`)) return;
+  if (!confirm(`"${stories[index].title}" Trash में भेजें?`)) return;
   const item = stories.splice(index, 1)[0];
   item.deletedAt = new Date().toISOString();
   deleted.push(item);
@@ -604,7 +490,7 @@ function restoreStory(index) {
 }
 
 function permanentDeleteStory(index) {
-  if (!confirm('हमेशा के लिए delete करें? यह वापस नहीं आएगा।')) return;
+  if (!confirm('हमेशा के लिए delete करें?')) return;
   deleted.splice(index, 1);
   save();
   render();
@@ -612,149 +498,88 @@ function permanentDeleteStory(index) {
 
 function render() {
   const list = document.getElementById('storiesList');
-
-  // Update trash button count
   const trashBtn = document.getElementById('trash-btn');
   if (trashBtn) trashBtn.textContent = deleted.length > 0 ? `🗑️ Trash (${deleted.length})` : '🗑️ Trash';
 
-  // Trash view
   if (currentFilter === 'trash') {
-    let u = 0, w = 0, ok = 0;
-    stories.forEach(s => { const st = getStatus(s); if (st === 'urgent') u++; else if (st === 'warning') w++; else ok++; });
-    document.getElementById('stat-urgent').textContent = u;
-    document.getElementById('stat-warning').textContent = w;
-    document.getElementById('stat-ok').textContent = ok;
-    document.getElementById('stat-total').textContent = stories.length;
-    if (deleted.length === 0) {
-      list.innerHTML = '<div class="empty-state">🗑️ Trash खाली है।</div>';
-      return;
-    }
-    list.innerHTML = deleted.map((s, i) => `
-      <div class="trash-card">
-        <div class="card-top">
-          <div class="story-title" style="text-decoration:line-through;color:var(--muted)">${s.title}</div>
-          <span class="badge" style="background:#222;color:#666;border:1px solid #444">🗑️ DELETED</span>
-        </div>
-        <div class="card-meta">
-          <div class="meta-item">🕐 Deleted: <span>${s.deletedAt ? fmt(s.deletedAt.split('T')[0]) : '—'}</span></div>
-          ${s.nextDate ? `<div class="meta-item">📅 अगली: <span>${fmt(s.nextDate)}</span></div>` : ''}
-        </div>
-        <div class="card-actions">
-          <button class="action-btn restore-btn" onclick="restoreStory(${i})">↩️ Restore</button>
-          <button class="action-btn perm-del-btn" onclick="permanentDeleteStory(${i})">🗑️ हमेशा के लिए Delete</button>
-        </div>
-      </div>`).join('');
+    let u=0,w=0,ok=0;
+    stories.forEach(s=>{const st=getStatus(s);if(st==='urgent')u++;else if(st==='warning')w++;else ok++;});
+    document.getElementById('stat-urgent').textContent=u;
+    document.getElementById('stat-warning').textContent=w;
+    document.getElementById('stat-ok').textContent=ok;
+    document.getElementById('stat-total').textContent=stories.length;
+    if(deleted.length===0){list.innerHTML='<div class="empty-state">🗑️ Trash खाली है।</div>';return;}
+    list.innerHTML=deleted.map((s,i)=>`<div class="trash-card"><div class="card-top"><div class="story-title" style="text-decoration:line-through;color:var(--muted)">${s.title}</div><span class="badge" style="background:#222;color:#666;border:1px solid #444">🗑️ DELETED</span></div><div class="card-meta"><div class="meta-item">🕐 Deleted: <span>${s.deletedAt?fmt(s.deletedAt.split('T')[0]):'—'}</span></div></div><div class="card-actions"><button class="action-btn restore-btn" onclick="restoreStory(${i})">↩️ Restore</button><button class="action-btn perm-del-btn" onclick="permanentDeleteStory(${i})">🗑️ हमेशा के लिए Delete</button></div></div>`).join('');
     return;
   }
 
-  let filtered = stories.filter(s => {
-    if (currentFilter === 'all') return true;
-    if (currentFilter === 'urgent') return getStatus(s) === 'urgent';
-    if (currentFilter === 'today') return daysUntil(s.nextDate) === 0;
-    if (currentFilter === 'deadline') return s.type === 'deadline';
-    if (currentFilter === 'series') return s.type === 'series';
+  let filtered=stories.filter(s=>{
+    if(currentFilter==='all')return true;
+    if(currentFilter==='urgent')return getStatus(s)==='urgent';
+    if(currentFilter==='today')return daysUntil(s.nextDate)===0;
+    if(currentFilter==='deadline')return s.type==='deadline';
+    if(currentFilter==='series')return s.type==='series';
     return true;
   });
 
-  filtered.sort((a, b) => daysUntil(a.nextDate) - daysUntil(b.nextDate));
+  filtered.sort((a,b)=>daysUntil(a.nextDate)-daysUntil(b.nextDate));
 
-  let u = 0, w = 0, ok = 0;
-  stories.forEach(s => {
-    const st = getStatus(s);
-    if (st === 'urgent') u++;
-    else if (st === 'warning') w++;
-    else ok++;
-  });
-  document.getElementById('stat-urgent').textContent = u;
-  document.getElementById('stat-warning').textContent = w;
-  document.getElementById('stat-ok').textContent = ok;
-  document.getElementById('stat-total').textContent = stories.length;
+  let u=0,w=0,ok=0;
+  stories.forEach(s=>{const st=getStatus(s);if(st==='urgent')u++;else if(st==='warning')w++;else ok++;});
+  document.getElementById('stat-urgent').textContent=u;
+  document.getElementById('stat-warning').textContent=w;
+  document.getElementById('stat-ok').textContent=ok;
+  document.getElementById('stat-total').textContent=stories.length;
 
-  if (filtered.length === 0) {
-    list.innerHTML = '<div class="empty-state">इस category में कोई story नहीं है।</div>';
-    return;
-  }
+  if(filtered.length===0){list.innerHTML='<div class="empty-state">इस category में कोई story नहीं है।</div>';return;}
 
-  list.innerHTML = filtered.map(s => {
-    const status = getStatus(s);
-    const badgeClass = getBadgeClass(s);
-    const badgeLabel = getBadgeLabel(s);
-    const realIndex = stories.indexOf(s);
-
-    let cardClass = 'ok';
-    if (status === 'urgent') cardClass = 'urgent';
-    else if (status === 'warning') cardClass = 'warning';
-    else if (s.type === 'deadline') cardClass = 'deadline';
-    else if (s.type === 'series') cardClass = 'series';
-
-    return `
-    <div class="story-card ${cardClass}">
-      <div class="card-top">
-        <div class="story-title">${s.title}</div>
-        <span class="badge ${badgeClass}">${badgeLabel}</span>
-      </div>
-      <div class="card-meta">
-        <div class="meta-item">📅 अगली: <span>${fmt(s.nextDate)}</span></div>
-        ${s.lastDate ? `<div class="meta-item">✅ पिछली: <span>${fmt(s.lastDate)}</span></div>` : ''}
-        <div class="meta-item">🔄 <span>${freqLabel(s.frequency)}</span></div>
-      </div>
-      ${s.note ? `<div class="card-note">💬 ${s.note}</div>` : ''}
-      <div class="card-actions">
-        <button class="action-btn done" onclick="markDone(${realIndex})">✅ खबर गई</button>
-        <button class="action-btn" onclick="editStory(${realIndex})">✏️ Edit</button>
-        <button class="action-btn" onclick="deleteStory(${realIndex})">🗑️</button>
-      </div>
-    </div>`;
+  list.innerHTML=filtered.map(s=>{
+    const status=getStatus(s),badgeClass=getBadgeClass(s),badgeLabel=getBadgeLabel(s),realIndex=stories.indexOf(s);
+    let cardClass='ok';
+    if(status==='urgent')cardClass='urgent';
+    else if(status==='warning')cardClass='warning';
+    else if(s.type==='deadline')cardClass='deadline';
+    else if(s.type==='series')cardClass='series';
+    return `<div class="story-card ${cardClass}"><div class="card-top"><div class="story-title">${s.title}</div><span class="badge ${badgeClass}">${badgeLabel}</span></div><div class="card-meta"><div class="meta-item">📅 अगली: <span>${fmt(s.nextDate)}</span></div>${s.lastDate?`<div class="meta-item">✅ पिछली: <span>${fmt(s.lastDate)}</span></div>`:''}<div class="meta-item">🔄 <span>${freqLabel(s.frequency)}</span></div></div>${s.note?`<div class="card-note">💬 ${s.note}</div>`:''}<div class="card-actions"><button class="action-btn done" onclick="markDone(${realIndex})">✅ खबर गई</button><button class="action-btn" onclick="editStory(${realIndex})">✏️ Edit</button><button class="action-btn" onclick="deleteStory(${realIndex})">🗑️</button></div></div>`;
   }).join('');
 }
 
-// ── Save: Firestore when signed in, localStorage fallback ────────────
 function save() {
-    if (currentUser) {
-          // Private save (existing)
-          db.collection('users').doc(currentUser.uid).collection('data').doc('stories')
-            .set({ items: stories, deleted: deleted }).catch(e => console.error('Save error:', e));
-
-          // Public summary for Claude
-          db.collection('public').doc('stories')
-            .set({
-                      items: stories.map(s => ({
-                                  id: s.id, title: s.title, type: s.type,
-                                  category: s.category, nextDate: s.nextDate,
-                                  lastDate: s.lastDate, frequency: s.frequency, note: s.note
-                      })),
-                      updatedAt: new Date().toISOString()
-            }).catch(e => console.error('Public save error:', e));
-    } else {
-          localStorage.setItem('tafhim-stories', JSON.stringify(stories));
-          localStorage.setItem('tafhim-stories-deleted', JSON.stringify(deleted));
-    }
+  if (currentUser) {
+    db.collection('users').doc(currentUser.uid).collection('data').doc('stories')
+      .set({ items: stories, deleted: deleted })
+      .then(() => pushToSheet())
+      .catch(e => console.error('Save error:', e));
+  } else {
+    localStorage.setItem('tafhim-stories', JSON.stringify(stories));
+    localStorage.setItem('tafhim-stories-deleted', JSON.stringify(deleted));
+    pushToSheet();
+  }
 }
-// ── Default stories ──────────────────────────────────────────────────
+
 function getDefaultStories() {
   return [
-    { id: 1, title: 'PMFBY फसल बीमा योजना', category: 'agriculture', type: 'investigation', lastDate: '2026-05-18', nextDate: '2026-05-25', frequency: 'weekly', note: 'आज story file होनी है। उपनिदेशक कृषि प्रसार का version लेना बाकी है। एक हफ्ते बाद follow-up।' },
-    { id: 2, title: 'गेहूं खरीद — follow-up', category: 'agriculture', type: 'followup', lastDate: '', nextDate: '2026-05-18', frequency: '3days', note: 'आज ही story देने की कोशिश। खरीद की ताज़ा स्थिति और आंकड़े लेने हैं।' },
-    { id: 3, title: 'जनगणना — इतिहास और angles', category: 'govt', type: 'followup', lastDate: '', nextDate: '2026-05-20', frequency: 'weekly', note: 'कई angles हैं — clarification और version लेना है। 1-2 दिन में mature होगी।' },
-    { id: 4, title: 'Farmer Registry — नए आंकड़े व अंतिम तिथि', category: 'agriculture', type: 'followup', lastDate: '2026-05-14', nextDate: '2026-05-19', frequency: '3days', note: 'नए सिरे से आंकड़े और अंतिम तिथि का विवरण देना है।' },
-    { id: 5, title: 'कीटनाशक विक्रेता दुकान निलंबन — स्थिति', category: 'investigation', type: 'followup', lastDate: '', nextDate: '2026-05-20', frequency: 'asneeded', note: 'क्या स्थिति है — update लेना है।' },
-    { id: 6, title: 'Outsource Bharti — JAAM vs Sevayojan Portal comparison', category: 'investigation', type: 'investigation', lastDate: '', nextDate: '2026-05-21', frequency: 'asneeded', note: 'दोनों portals के photos compare करके खबर निकालनी है।' },
-    { id: 7, title: 'PM आवास योजना — प्रगति रिपोर्ट', category: 'govt', type: 'followup', lastDate: '', nextDate: '2026-05-23', frequency: 'weekly', note: 'क्या प्रगति हो रही है — नजर रखनी है।' },
-    { id: 8, title: 'ग्रामीण आजीविका मिशन — Drone Didi focus', category: 'govt', type: 'followup', lastDate: '', nextDate: '2026-05-22', frequency: 'weekly', note: 'Drone Didi पर focus करना है।' },
-    { id: 9, title: 'मुख्य पशु चिकित्सा अधिकारी — Gopal को सूची', category: 'govt', type: 'followup', lastDate: '', nextDate: '2026-05-20', frequency: 'asneeded', note: 'Gopal को की सूची प्राप्त करनी है और खबर निकालनी है।' },
-    { id: 10, title: 'पंचायत राज — सफाई कर्मी तैनाती गोलमाल (Series)', category: 'panchayat', type: 'series', lastDate: '', nextDate: '2026-05-19', frequency: '3days', note: 'पूरी series चलानी है। हर 3-4 दिन में एक part।' },
-    { id: 11, title: 'Waqf संपत्ति पंजीकरण — अंतिम तिथि 5 जून', category: 'govt', type: 'deadline', lastDate: '', nextDate: '2026-05-25', frequency: 'weekly', note: '5 जून deadline तक कम से कम 2 खबरें देनी हैं।' },
-    { id: 12, title: 'CM Dashboard — Analytical story', category: 'govt', type: 'followup', lastDate: '2026-05-10', nextDate: '2026-05-22', frequency: 'asneeded', note: 'एक खबर जा चुकी है। Analytical angle पर एक और निकलेगी।' },
-    { id: 13, title: 'सिखलाई रेजीमेंट Passing Out Parade — 21 मई', category: 'event', type: 'deadline', lastDate: '', nextDate: '2026-05-21', frequency: 'asneeded', note: '21 मई को event है। Coverage plan करें।' },
-    { id: 14, title: 'पंचायत मतदाता सूची — अंतिम प्रकाशन 5-6 जून', category: 'panchayat', type: 'deadline', lastDate: '', nextDate: '2026-05-28', frequency: 'asneeded', note: '28-30 मई में खबर दी जा सकती है। 5-6 जून को final publication।' },
-    { id: 15, title: 'पंचायत राज Audit — आपत्तियां pending', category: 'panchayat', type: 'investigation', lastDate: '', nextDate: '2026-05-20', frequency: 'weekly', note: 'Audit reports पर pending आपत्तियां — खबर बन सकती है।' },
-    { id: 16, title: 'ग्राम पंचायत Digital Library', category: 'panchayat', type: 'followup', lastDate: '', nextDate: '2026-05-23', frequency: 'asneeded', note: 'स्थापना और शुरुआत पर एक खबर।' },
-    { id: 17, title: 'MNREGA की जगह नई योजना', category: 'govt', type: 'followup', lastDate: '', nextDate: '2026-05-25', frequency: 'weekly', note: 'नई योजना शुरू होने वाली है — नजर रखनी है।' },
-    { id: 18, title: 'PWD Inspection Bungalow — e-booking स्थिति', category: 'govt', type: 'followup', lastDate: '', nextDate: '2026-05-22', frequency: 'asneeded', note: 'e-booking की वर्तमान स्थिति देखनी है।' },
+    { id:1, title:'PMFBY फसल बीमा योजना', category:'agriculture', type:'investigation', lastDate:'2026-05-18', nextDate:'2026-05-25', frequency:'weekly', note:'आज story file होनी है। उपनिदेशक कृषि प्रसार का version लेना बाकी है।' },
+    { id:2, title:'गेहूं खरीद — follow-up', category:'agriculture', type:'followup', lastDate:'', nextDate:'2026-05-18', frequency:'3days', note:'खरीद की ताज़ा स्थिति और आंकड़े लेने हैं।' },
+    { id:3, title:'जनगणना — इतिहास और angles', category:'govt', type:'followup', lastDate:'', nextDate:'2026-05-20', frequency:'weekly', note:'clarification और version लेना है।' },
+    { id:4, title:'Farmer Registry — नए आंकड़े व अंतिम तिथि', category:'agriculture', type:'followup', lastDate:'2026-05-14', nextDate:'2026-05-19', frequency:'3days', note:'नए सिरे से आंकड़े और अंतिम तिथि का विवरण।' },
+    { id:5, title:'कीटनाशक विक्रेता दुकान निलंबन — स्थिति', category:'investigation', type:'followup', lastDate:'', nextDate:'2026-05-20', frequency:'asneeded', note:'क्या स्थिति है — update लेना है।' },
+    { id:6, title:'Outsource Bharti — JAAM vs Sevayojan Portal', category:'investigation', type:'investigation', lastDate:'', nextDate:'2026-05-21', frequency:'asneeded', note:'दोनों portals के photos compare करके खबर निकालनी है।' },
+    { id:7, title:'PM आवास योजना — प्रगति रिपोर्ट', category:'govt', type:'followup', lastDate:'', nextDate:'2026-05-23', frequency:'weekly', note:'क्या प्रगति हो रही है — नजर रखनी है।' },
+    { id:8, title:'ग्रामीण आजीविका मिशन — Drone Didi focus', category:'govt', type:'followup', lastDate:'', nextDate:'2026-05-22', frequency:'weekly', note:'Drone Didi पर focus करना है।' },
+    { id:9, title:'मुख्य पशु चिकित्सा अधिकारी — सूची', category:'govt', type:'followup', lastDate:'', nextDate:'2026-05-20', frequency:'asneeded', note:'Gopal को की सूची प्राप्त करनी है।' },
+    { id:10, title:'पंचायत राज — सफाई कर्मी तैनाती गोलमाल (Series)', category:'panchayat', type:'series', lastDate:'', nextDate:'2026-05-19', frequency:'3days', note:'पूरी series चलानी है। हर 3-4 दिन में एक part।' },
+    { id:11, title:'Waqf संपत्ति पंजीकरण — अंतिम तिथि 5 जून', category:'govt', type:'deadline', lastDate:'', nextDate:'2026-05-25', frequency:'weekly', note:'5 जून deadline तक कम से कम 2 खबरें।' },
+    { id:12, title:'CM Dashboard — Analytical story', category:'govt', type:'followup', lastDate:'2026-05-10', nextDate:'2026-05-22', frequency:'asneeded', note:'Analytical angle पर एक और निकलेगी।' },
+    { id:13, title:'सिखलाई रेजीमेंट Passing Out Parade — 21 मई', category:'event', type:'deadline', lastDate:'', nextDate:'2026-05-21', frequency:'asneeded', note:'21 मई को event है। Coverage plan करें।' },
+    { id:14, title:'पंचायत मतदाता सूची — अंतिम प्रकाशन 5-6 जून', category:'panchayat', type:'deadline', lastDate:'', nextDate:'2026-05-28', frequency:'asneeded', note:'28-30 मई में खबर दी जा सकती है।' },
+    { id:15, title:'पंचायत राज Audit — आपत्तियां pending', category:'panchayat', type:'investigation', lastDate:'', nextDate:'2026-05-20', frequency:'weekly', note:'Audit reports पर pending आपत्तियां।' },
+    { id:16, title:'ग्राम पंचायत Digital Library', category:'panchayat', type:'followup', lastDate:'', nextDate:'2026-05-23', frequency:'asneeded', note:'स्थापना और शुरुआत पर एक खबर।' },
+    { id:17, title:'MNREGA की जगह नई योजना', category:'govt', type:'followup', lastDate:'', nextDate:'2026-05-25', frequency:'weekly', note:'नई योजना शुरू होने वाली है।' },
+    { id:18, title:'PWD Inspection Bungalow — e-booking स्थिति', category:'govt', type:'followup', lastDate:'', nextDate:'2026-05-22', frequency:'asneeded', note:'e-booking की वर्तमान स्थिति।' }
   ];
 }
 
-// ── Firestore real-time sync ─────────────────────────────────────────
 function startSync() {
   if (unsubSnap) unsubSnap();
   const ref = db.collection('users').doc(currentUser.uid).collection('data').doc('stories');
@@ -772,14 +597,9 @@ function startSync() {
   }, err => console.error('Sync error:', err));
 }
 
-// ── Auth ─────────────────────────────────────────────────────────────
 function handleAuth() {
-  if (currentUser) {
-    if (unsubSnap) unsubSnap();
-    auth.signOut();
-  } else {
-    auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(e => alert('Sign-in failed: ' + e.message));
-  }
+  if (currentUser) { if (unsubSnap) unsubSnap(); auth.signOut(); }
+  else { auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(e => alert('Sign-in failed: ' + e.message)); }
 }
 
 auth.onAuthStateChanged(user => {
